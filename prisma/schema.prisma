@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Person {
+  id          String       @id
+  name        String
+  homeAddress String?
+  homeLat     Float?
+  homeLng     Float?
+  travelMode  String       @default("walk")
+  events      CalEvent[]
+  preferences Preference[]
+  shareLinks  ShareLink[]
+}
+
+model CalEvent {
+  id         String  @id
+  personId   String
+  person     Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  title      String
+  start      String
+  end        String
+  kind       String
+  recurrence String?
+  locationRaw String?
+  building   String?
+  room       String?
+  lat        Float?
+  lng        Float?
+  source     String
+  externalId String?
+  contentHash String?
+  updatedAt  String
+}
+
+model Preference {
+  id            String @id
+  personId      String
+  person        Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  label         String
+  targetPerWeek Int
+  durationMin   Int
+  windowsJson   String
+  priority      Int
+}
+
+model ShareLink {
+  token     String  @id
+  personId  String
+  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  expiresAt String
+  scope     String  @default("free_busy")
+  revoked   Boolean @default(false)
+  prefsAsFree Boolean @default(false)
+}
+
+model TravelCache {
+  id           String @id
+  originKey    String
+  destKey      String
+  mode         String
+  durationMin  Int
+  approximate  Boolean @default(false)
+  createdAt    String
+
+  @@unique([originKey, destKey, mode])
+}

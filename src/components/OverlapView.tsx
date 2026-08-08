@@ -1,51 +1,91 @@
-import type { Slot } from "@/lib/overlap";
+"use client";
+
+import { freeOverlapWeek, topHangoutSuggestions } from "@/lib/overlap";
+import { formatDayLabel, formatTimeLabel } from "@/lib/time";
+import { ALEX_ID, YOU_ID, useCalendarStore } from "@/store/calendarStore";
 import WeekCalendar from "./WeekCalendar";
-import type { CalEvent } from "@/lib/types";
+import { Badge, Button, Empty, Section } from "./ui";
 
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+export default function OverlapView() {
+  const events = useCalendarStore((s) => s.events);
+  const weekStartISO = useCalendarStore((s) => s.weekStartISO);
+  const prefsAsFree = useCalendarStore((s) => s.prefsAsFreeForOverlap);
+  const setPrefsAsFree = useCalendarStore((s) => s.setPrefsAsFreeForOverlap);
 
-function formatDay(dayISO: string): string {
-  const d = new Date(`${dayISO}T12:00:00`);
-  const dow = DAY_NAMES[d.getDay() === 0 ? 6 : d.getDay() - 1] ?? d.toLocaleDateString("en-US", { weekday: "short" });
-  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `${dow} ${date}`;
-}
+  const slots = freeOverlapWeek(
+    events,
+    YOU_ID,
+    ALEX_ID,
+    weekStartISO,
+    5,
+    9,
+    21,
+    60,
+    prefsAsFree
+  );
+  const suggestions = topHangoutSuggestions(
+    slots.map((s) => ({
+      start: s.start.toISOString(),
+      end: s.end.toISOString(),
+      dayISO: s.dayISO,
+      durationMin: s.durationMin,
+    })),
+    3
+  );
 
-type Props = {
-  events: CalEvent[];
-  slots: Slot[];
-};
-
-export default function OverlapView({ events, slots }: Props) {
-  const grouped = slots.reduce<Record<string, Slot[]>>((acc, s) => {
+  const grouped = slots.reduce<Record<string, typeof slots>>((acc, s) => {
     (acc[s.dayISO] ??= []).push(s);
     return acc;
   }, {});
 
   return (
-    <div>
-      <div className="section-card" style={{ padding: 16, marginBottom: 16 }}>
-        <p className="subtitle" style={{ margin: "0 0 12px" }}>
-          Green = you and Alex are both free (9 AM – 9 PM, 1-hour blocks). Mon/Wed afternoons should light up.
-        </p>
+    <div className="stack">
+      <Section
+        title="Friend overlap"
+        subtitle="Green cells are times you and Alex are both free. Preference blocks count as busy unless you toggle them free."
+        actions={
+          <Button
+            variant={prefsAsFree ? "primary" : "secondary"}
+            onClick={() => setPrefsAsFree(!prefsAsFree)}
+          >
+            {prefsAsFree ? "Prefs count as free" : "Prefs count as busy"}
+          </Button>
+        }
+      >
         <WeekCalendar
           events={events}
+          weekStart={weekStartISO}
           overlapSlots={slots}
           showOverlap
         />
-      </div>
+      </Section>
 
-      <div className="section-card">
-        <h2>Shared free slots ({slots.length})</h2>
-        <p className="subtitle">Tap a slot when planning hangouts — no when2meet painting required.</p>
+      <Section title="Top hangout times" subtitle="Longest shared free windows this week.">
+        {suggestions.length === 0 ? (
+          <Empty>No shared free slots in the demo window.</Empty>
+        ) : (
+          <ol className="suggest-list">
+            {suggestions.map((s, i) => (
+              <li key={`${s.dayISO}-${i}`}>
+                <Badge tone="good">#{i + 1}</Badge>{" "}
+                <strong>{formatDayLabel(s.dayISO)}</strong>{" "}
+                {formatTimeLabel(s.start)} – {formatTimeLabel(s.end)}{" "}
+                <span className="muted">({s.durationMin} min)</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+
+      <Section title={`All shared slots (${slots.length})`}>
         {slots.length === 0 ? (
-          <p className="empty-state">No shared free slots in the demo window.</p>
+          <Empty>No shared free slots.</Empty>
         ) : (
           <ul className="overlap-list">
             {Object.entries(grouped).map(([dayISO, daySlots]) =>
               daySlots.map((s, idx) => (
                 <li key={`${dayISO}-${idx}`}>
-                  <span className="day-label">{formatDay(dayISO)}</span>
+                  <span className="day-label">{formatDayLabel(dayISO)}</span>
                   {" · "}
                   {s.start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                   {" – "}
@@ -55,7 +95,7 @@ export default function OverlapView({ events, slots }: Props) {
             )}
           </ul>
         )}
-      </div>
+      </Section>
     </div>
   );
 }
