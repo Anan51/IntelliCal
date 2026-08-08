@@ -1,0 +1,30 @@
+COM SCI 35L - Software Construction Laboratory
+University of California, Los Angeles — Fall 2026
+Instructor: Prof. Ada Bruin
+Office Hours: Wed 15:00-16:00 Boelter 3400
+
+Course meetings
+Lecture: Tue/Thu 11:00-12:15 Boelter 3400
+Discussion: Fri 13:00-13:50 Boelter 5249
+Lab: Mon 16:00-17:50 Boelter 2760
+
+Important dates
+Midterm 1: 10/21/2026 11:00-12:15 Boelter 3400
+Midterm 2: November 18, 2026 11:00-12:15 Boelter 3400
+Final Exam: 12/11/2026 15:00-18:00 Bunche 2209
+
+Assignments and deadlines
+Homework 1 due 10/03/2026 23:59
+Homework 2 is due on October 17, 2026 at 23:59
+Problem Set 3 Deadline: 10/31/2026 23:59
+Project Proposal due by 11/07/2026 17:00
+Essay draft: 11/14/2026
+Project Final Submission: December 5, 2026 23:59
+
+Quizzes
+Quiz 1: 10/08/2026 11:00-11:20
+Quiz 2 — 11/05/2026 11:00-11:20
+
+Notes
+No class on Thanksgiving (11/26/2026).
+Late work loses 10% per day after the deadline.

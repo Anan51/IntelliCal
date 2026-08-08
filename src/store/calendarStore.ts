@@ -48,7 +48,7 @@ type CalendarState = {
   pinEvent: (id: string) => void;
   setParseDrafts: (drafts: ParsedEvent[]) => void;
   updateParseDraft: (draftId: string, patch: Partial<ParsedEvent>) => void;
-  commitParseDrafts: () => void;
+  commitParseDrafts: (drafts?: ParsedEvent[]) => void;
   setPreferences: (prefs: Preference[]) => void;
   upsertPreference: (pref: Preference) => void;
   removePreference: (id: string) => void;
@@ -151,10 +151,12 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       ),
     })),
 
-  commitParseDrafts: () => {
+  commitParseDrafts: (drafts) => {
     const { parseDrafts, events, preferences, weekStartISO, activePersonId } = get();
+    const sourceDrafts = drafts ?? parseDrafts;
+    if (sourceDrafts.length === 0) return;
     const now = new Date().toISOString();
-    const incoming: CalEvent[] = parseDrafts.map((d) =>
+    const incoming: CalEvent[] = sourceDrafts.map((d) =>
       withHash({
         id: newId("evt"),
         personId: activePersonId,

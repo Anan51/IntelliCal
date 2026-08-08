@@ -1,6 +1,7 @@
 import { newId } from "./id";
 import { resolveLocation } from "./resolveLocation";
 import { expandEvent, weeklyRRule } from "./recurrence";
+import { scanSyllabusImportantDates } from "./syllabusFilter";
 import type { CalEvent, EventKind, ParsedEvent } from "./types";
 import { addDaysISO, normalizeHHMM, parseISODate, formatISODate } from "./time";
 
@@ -36,9 +37,8 @@ const DAY_TOKEN: Record<string, number> = {
 };
 
 function parseDayList(raw: string): number[] {
-  // Supports "Mon/Wed", "MWF", "TTh", "Mon, Wed, Fri"
   const compact = raw.replace(/[^A-Za-z]/g, "");
-  if (/^(MWF|MW|MF|TR|TTh|MWF|MTWRF)$/i.test(compact)) {
+  if (/^(MWF|MW|MF|TR|TTh|MTWRF)$/i.test(compact)) {
     const map: Record<string, number[]> = {
       mwf: [1, 3, 5],
       mw: [1, 3],
@@ -60,20 +60,12 @@ function parseDayList(raw: string): number[] {
   return days;
 }
 
-function parseDate(dateStr: string, fallbackYear = 2026): string {
-  const m = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-  if (!m) return `${fallbackYear}-10-30`;
-  const year = m[3].length === 2 ? `20${m[3]}` : m[3];
-  return `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
-}
-
 function courseTitle(text: string): string {
-  const m = text.match(/^([A-Z]{2,4}\s*\d{1,3}[A-Z]?)\b/m);
-  return m?.[1]?.replace(/\s+/, " ") ?? "Course";
+  const m = text.match(/^([A-Z]{2,10}(?:\s+[A-Z]{2,10})?\s*\d{1,3}[A-Z]?)\b/m);
+  return m?.[1]?.replace(/\s+/g, " ").trim() ?? "Course";
 }
 
 function firstWeekDateForDay(weekStartISO: string, day: number): string {
-  // weekStartISO is Monday
   const monday = parseISODate(weekStartISO);
   const mondayDow = monday.getDay();
   const offsetToMonday = mondayDow === 1 ? 0 : mondayDow === 0 ? -6 : 1 - mondayDow;
@@ -84,109 +76,89 @@ function firstWeekDateForDay(weekStartISO: string, day: number): string {
   return formatISODate(base);
 }
 
+function parseMeetingSchedule(text: string, options: ParseSyllabusOptions): ParsedEvent[] {
+  const title = courseTitle(text);
+  const drafts: ParsedEvent[] = [];
+
+  for (const line of text.split(/\r?\n/)) {
+    const meeting = line.match(
+      /(Lecture|Discussion|Section|Lab)[:\s]+([A-Za-z][\w/,&\s]*?)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})(?:\s+(.+))?/i
+    );
+    if (!meeting) continue;
+
+    const kindRaw = meeting[1].toLowerCase();
+    const kind: EventKind =
+      kindRaw === "lecture"
+        ? "lecture"
+        : kindRaw === "discussion" || kindRaw === "section"
+          ? "discussion"
+          : "other";
+    const days = parseDayList(meeting[2]);
+    if (days.length === 0) continue;
+
+    const startT = normalizeHHMM(meeting[3]);
+    const endT = normalizeHHMM(meeting[4]);
+    const locRaw = meeting[5]?.trim().replace(/\s+/g, " ");
+    const location = locRaw ? resolveLocation(locRaw) : undefined;
+    const firstDay = firstWeekDateForDay(options.weekStartISO, days[0]);
+
+    drafts.push({
+      draftId: newId("draft"),
+      title: `${title} ${meeting[1]}`,
+      start: `${firstDay}T${startT}:00`,
+      end: `${firstDay}T${endT}:00`,
+      kind,
+      location,
+      recurrence: weeklyRRule(days, options.termEndISO),
+      confidence: {
+        title: 0.7,
+        start: 0.9,
+        end: 0.9,
+        kind: 0.95,
+        location: location?.building ? 0.85 : 0.4,
+      },
+    });
+  }
+
+  return drafts;
+}
+
+function dedupeDrafts(drafts: ParsedEvent[]): ParsedEvent[] {
+  const seen = new Set<string>();
+  const out: ParsedEvent[] = [];
+  for (const d of drafts) {
+    const key = `${d.kind}|${d.start}|${d.end}|${d.title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(d);
+  }
+  return out;
+}
+
 export type ParseSyllabusOptions = {
   weekStartISO: string;
   termEndISO?: string;
+  /** When true, only return exam/quiz/deadline hits from the important-date filter. */
+  importantDatesOnly?: boolean;
 };
 
 /**
- * Heuristic syllabus parser. Returns draft ParsedEvents with confidence scores.
- * Never auto-commits — caller must show a review UI.
+ * Parse a syllabus into calendar drafts.
+ * 1) Text-filter important dates (midterms, finals, quizzes, homework, projects)
+ * 2) Extract recurring lecture/discussion/lab meetings
+ * Review UI must confirm before commits.
  */
 export function parseSyllabus(
   text: string,
   options: ParseSyllabusOptions
 ): ParsedEvent[] {
-  const title = courseTitle(text);
-  const drafts: ParsedEvent[] = [];
-  const lines = text.split(/\r?\n/);
+  const important = scanSyllabusImportantDates(text);
+  if (options.importantDatesOnly) return important;
 
-  for (const line of lines) {
-    const meeting = line.match(
-      /(Lecture|Discussion|Section|Lab)[:\s]+([A-Za-z][\w/,&\s]*?)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})(?:\s+(.+))?/i
-    );
-    if (meeting) {
-      const kindRaw = meeting[1].toLowerCase();
-      const kind: EventKind =
-        kindRaw === "lecture"
-          ? "lecture"
-          : kindRaw === "discussion" || kindRaw === "section"
-            ? "discussion"
-            : "other";
-      const days = parseDayList(meeting[2]);
-      const startT = normalizeHHMM(meeting[3]);
-      const endT = normalizeHHMM(meeting[4]);
-      const locRaw = meeting[5]?.trim().replace(/\s+/g, " ");
-      const location = locRaw ? resolveLocation(locRaw) : undefined;
-      if (days.length === 0) continue;
-
-      const firstDay = firstWeekDateForDay(options.weekStartISO, days[0]);
-      drafts.push({
-        draftId: newId("draft"),
-        title: `${title} ${meeting[1]}`,
-        start: `${firstDay}T${startT}:00`,
-        end: `${firstDay}T${endT}:00`,
-        kind,
-        location,
-        recurrence: weeklyRRule(days, options.termEndISO),
-        confidence: {
-          title: 0.7,
-          start: 0.9,
-          end: 0.9,
-          kind: 0.95,
-          location: location?.building ? 0.85 : 0.4,
-        },
-      });
-      continue;
-    }
-
-    const exam = line.match(
-      /(Midterm|Final(?:\s*Exam)?|Exam)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4}).*?(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i
-    );
-    if (exam) {
-      const date = parseDate(exam[2]);
-      const label = /final/i.test(exam[1]) ? "Final Exam" : /midterm/i.test(exam[1]) ? "Midterm" : "Exam";
-      drafts.push({
-        draftId: newId("draft"),
-        title: `${title} ${label}`,
-        start: `${date}T${normalizeHHMM(exam[3])}:00`,
-        end: `${date}T${normalizeHHMM(exam[4])}:00`,
-        kind: "exam",
-        confidence: {
-          title: 0.8,
-          start: 0.9,
-          end: 0.9,
-          kind: 0.95,
-          location: 0.2,
-        },
-      });
-      continue;
-    }
-
-    const due = line.match(
-      /(Due|Deadline|Assignment|Problem Set|Essay|Project)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:.*?(\d{1,2}:\d{2}))?/i
-    );
-    if (due) {
-      const date = parseDate(due[2]);
-      const time = due[3] ? normalizeHHMM(due[3]) : "23:59";
-      drafts.push({
-        draftId: newId("draft"),
-        title: `${title} ${due[1]}`,
-        start: `${date}T${time}:00`,
-        end: `${date}T${time}:00`,
-        kind: "due_date",
-        confidence: {
-          title: 0.6,
-          start: 0.75,
-          end: 0.75,
-          kind: 0.8,
-          location: 0.1,
-        },
-      });
-    }
-  }
-
-  return drafts;
+  const meetings = parseMeetingSchedule(text, options);
+  return dedupeDrafts([...meetings, ...important]).sort((a, b) =>
+    a.start.localeCompare(b.start)
+  );
 }
 
 /** Expand recurring drafts into concrete week events for calendar merge preview. */

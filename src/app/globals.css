@@ -848,6 +848,13 @@ textarea {
   font-size: 0.85rem;
 }
 
+.scan-status {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--good);
+}
+
 /* Legacy alias used by older class references */
 .section-card {
   background: var(--panel);

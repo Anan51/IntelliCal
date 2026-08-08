@@ -25,7 +25,8 @@ export default function SyllabusModal({ open, onClose }: Props) {
             <p className="kicker">Setup</p>
             <h2 id="syllabus-modal-title">Import syllabus</h2>
             <p className="subtitle">
-              One-time intake. Review parsed events, then commit them to your calendar.
+              Upload a .txt syllabus or load the test syllabus. We scan for exams, quizzes, and
+              deadlines, then save them to your calendar.
             </p>
           </div>
           <Button variant="ghost" onClick={onClose} aria-label="Close import">
