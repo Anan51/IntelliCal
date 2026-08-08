@@ -6,36 +6,26 @@ type Props = {
 
 export default function WalkAlerts({ warnings }: Props) {
   return (
-    <div>
-      <div className="section-card">
-        <h2>Tight walk transitions</h2>
-        <p className="subtitle">
-          Flags back-to-back classes where the gap is shorter than UCLA walk time + 2 min buffer (Boelter ↔ Bunche = 12 min).
-        </p>
-        {warnings.length === 0 ? (
-          <p className="empty-state">No tight walks in your current schedule. Nice!</p>
-        ) : (
-          <ul className="walk-list">
-            {warnings.map((w, i) => (
-              <li key={i} className="walk-card">
-                <h3>⚠ Tight transition</h3>
-                <p>{w.message}</p>
-                <div className="stats">
-                  <span className="walk-stat">
-                    Gap: <strong>{w.gapMin} min</strong>
-                  </span>
-                  <span className="walk-stat">
-                    Walk: <strong>{w.walkMin} min</strong>
-                  </span>
-                  <span className="walk-stat">
-                    Need: <strong>{w.walkMin + 2} min</strong>
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+    <div className="mx-auto max-w-xl space-y-4">
+      <h1 className="text-[20px] font-semibold tracking-tight">Walks</h1>
+      <p className="text-[13px] text-[var(--text-secondary)]">
+        Gaps shorter than campus walk time + 2 minutes.
+      </p>
+
+      {warnings.length === 0 ? (
+        <p className="text-[13px] text-[var(--text-tertiary)]">No tight transitions.</p>
+      ) : (
+        <ul className="space-y-3">
+          {warnings.map((w, i) => (
+            <li key={i} className="border-l-2 border-[var(--warn)] pl-3">
+              <p className="text-[13px] text-[var(--text)]">{w.message}</p>
+              <p className="mt-1 text-[12px] tabular text-[var(--text-secondary)]">
+                Gap {w.gapMin}m · Walk {w.walkMin}m · Need {w.walkMin + 2}m
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

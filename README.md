@@ -1,8 +1,8 @@
 # IntelliCal
 
-**Pitch:** when2meet, but it already knows your classes and how long it takes to walk across UCLA.
+**Pitch:** when2meet, but it already knows your classes, preferences, and how long it takes to walk across UCLA.
 
-UCLA student schedule from syllabi + friend free-time overlap. Hackathon MVP — no Google Calendar OAuth, mock data only.
+UCLA student schedule from syllabi + personal preferences + friend free-time overlap. Phase 1 demo — no Google Calendar OAuth, mock data + localStorage only.
 
 ## Run locally
 
@@ -16,23 +16,45 @@ Open [http://localhost:3000](http://localhost:3000).
 Production build:
 
 ```bash
+npm install
 npm run build
 npm start
 ```
 
-## Demo script (90 seconds)
+## Demo script (~90–110 seconds)
 
-1. **Problem (15s):** Week 1 — four syllabi PDFs + group chat asking "when are you free?" Everyone opens when2meet and paints blocks by hand.
-2. **Syllabus → calendar (25s):** On **My Week**, click **Load sample syllabus**, then **Parse into calendar**. CS 31 lectures, discussion, midterm, and final appear on the week grid (color-coded by kind).
-3. **Friend overlap (25s):** Switch to **Friend Overlap**. Green cells show shared free time with demo friend Alex across Mon–Fri. Point out Mon/Wed afternoon slots — both free without manual painting.
-4. **Walk alerts (15s):** Open **Walk Alerts**. Wed shows a tight Boelter → Bunche transition (CS 31 ends 11:50, office hours at Bunche 12:00 — only 10 min gap, 12 min walk).
-5. **Close (10s):** Academic calendar becomes the input to social planning. No OAuth required for the demo.
+1. **Problem (10s):** Week 1 — syllabi + “when are you free?” Empty slots aren’t always social-ready.
+2. **Week (20s):** Open **Week**. Classes show as Google Calendar–style solid blocks; soft/hard prefs use muted fills with a left rail. Click empty hour → Protect time.
+3. **Connect calendar (20s):** Click **Connect calendar** (demo import — real Google OAuth is Phase 2). Extra busy blocks appear; accept a preference suggestion from calendar patterns.
+4. **Preferences (15s):** Open **Preferences**. One-tap templates, hard/soft, fixed or flexible. Survives refresh (localStorage).
+5. **Find time (20s):** **Balanced** hides soft gym from hangouts with Alex; switch **Max** to ignore soft. Soft prefs show as Busy (no label leak).
+6. **Walks (10s):** Wed Boelter → Bunche tight gap.
 
-## What's built
+## Calendar connect
 
-- Mon–Fri week calendar with time gutters and color by event kind (lecture / discussion / exam / busy)
-- Regex syllabus parser (`src/lib/parseSyllabus.ts`) — client-side, no API keys
-- Friend overlap heatmap: you vs mock friend Alex (`src/lib/overlap.ts`)
-- Static UCLA walk-time warnings for tight transitions (`src/lib/walkTimes.ts`)
+Phase 1 uses a **demo Connect calendar** that imports mock Google Calendar busy blocks and preference suggestions (Accept / Dismiss). Real Google OAuth + `calendar.readonly` is Phase 2 — no secrets required for the demo.
 
-See `HACKATHON_PLAN.md` for full scope.
+## What's built (Phase 1)
+
+- **Night library** design inspired by Notion Calendar / Cron: sidebar nav, hairline week grid, tabular time gutters — not a card stack
+- **Preferences** is a first-class screen (sidebar): one-tap templates for Gym, Quiet mornings, Downtime, Focus, Social, Custom; fixed days **or** flexible N×/week; hard/soft; location; localStorage
+- Protect-this on empty My Week hours; click a preference block to edit strength / delete
+- Overlap modes: **strict** | **balanced** (default) | **max**
+- Soft prefs: dashed hatch on owner calendar; friend view shows **Busy** only
+- Mobile agenda fallback; walk alerts inline on My Week + Walks page
+- Regex syllabus parser — client-side, no API keys
+- Demo friend Alex hardcoded (no OAuth)
+
+## Design notes
+
+- Soft preferences: dashed / striped tint on owner calendar
+- Hard preferences: solid muted
+- Classes: saturated by kind
+- Friend overlap never leaks preference labels (shows "Busy")
+- Day convention for preference windows: `0 = Mon … 4 = Fri`
+
+## Out of scope (later phases)
+
+Google OAuth / Auth.js, calendar inference suggestions, real share links, PDF/LLM syllabus parse, DB persistence.
+
+See `PRD.md` for the full product plan and `HACKATHON_PLAN.md` for original MVP scope.

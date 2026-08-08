@@ -1,4 +1,5 @@
 import type { CalEvent } from "./types";
+import { TIMEZONE } from "./types";
 import { DEMO_WEEK_START } from "./demo-data";
 
 const DAY_OFFSET: Record<string, number> = {
@@ -75,6 +76,9 @@ export function parseSyllabus(text: string, personId = "you"): CalEvent[] {
           building,
           kind: "lecture",
           personId,
+          source: "syllabus",
+          strength: "hard",
+          timezone: TIMEZONE,
         });
       }
     }
@@ -95,6 +99,9 @@ export function parseSyllabus(text: string, personId = "you"): CalEvent[] {
           building,
           kind: "discussion",
           personId,
+          source: "syllabus",
+          strength: "hard",
+          timezone: TIMEZONE,
         });
       }
     }
@@ -109,6 +116,9 @@ export function parseSyllabus(text: string, personId = "you"): CalEvent[] {
         end: `${date}T${normalizeTime(midterm[3])}:00`,
         kind: "exam",
         personId,
+        source: "syllabus",
+        strength: "hard",
+        timezone: TIMEZONE,
       });
     }
 
@@ -122,6 +132,9 @@ export function parseSyllabus(text: string, personId = "you"): CalEvent[] {
         end: `${date}T${normalizeTime(finalExam[3])}:00`,
         kind: "exam",
         personId,
+        source: "syllabus",
+        strength: "hard",
+        timezone: TIMEZONE,
       });
     }
   }
