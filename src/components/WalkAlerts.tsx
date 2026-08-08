@@ -23,9 +23,8 @@ export default function WalkAlerts() {
   return (
     <div className="stack">
       <Section
-        kicker="Campus / Travel"
-        title="Leave-by cues"
-        subtitle="Travel time between campus buildings, with a 5-minute buffer. Home departure is included for the first event of the day when an address is set."
+        title="Campus travel"
+        subtitle="Leave-by cues use building walk times plus a 5-minute buffer."
       >
         {cues.length === 0 ? (
           <Empty>No transitions that need travel time.</Empty>

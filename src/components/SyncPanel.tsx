@@ -66,9 +66,8 @@ export default function SyncPanel() {
 
   return (
     <Section
-      kicker="Sync / Google"
       title="Calendar sync"
-      subtitle="Two-way Google Calendar sync uses a dedicated IntelliCal secondary calendar. Without OAuth keys, everything else still works."
+      subtitle="Google Calendar two-way sync uses a dedicated IntelliCal calendar. Works in demo mode without OAuth keys."
     >
       <div className="sync-status">
         {status == null ? (

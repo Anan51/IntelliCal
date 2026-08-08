@@ -2,55 +2,33 @@
 
 import { useEffect, useMemo, useState } from "react";
 import EventModal from "@/components/EventModal";
-import OverlapView from "@/components/OverlapView";
-import PreferencesPanel from "@/components/PreferencesPanel";
-import SharePanel from "@/components/SharePanel";
-import SyllabusIntake from "@/components/SyllabusIntake";
-import SyncPanel from "@/components/SyncPanel";
-import WalkAlerts from "@/components/WalkAlerts";
+import FriendsView from "@/components/FriendsView";
+import SettingsView from "@/components/SettingsView";
+import SyllabusModal from "@/components/SyllabusModal";
 import WeekCalendar from "@/components/WeekCalendar";
-import { Button, Section, TabBar } from "@/components/ui";
+import YearCalendar from "@/components/YearCalendar";
+import { Badge, Button } from "@/components/ui";
+import { DEMO_YEAR } from "@/lib/constants";
+import { addDaysISO, formatDayLabel, weekStartMonday } from "@/lib/time";
 import type { CalEvent } from "@/lib/types";
 import { allTransitionCues } from "@/lib/walkTimes";
 import { YOU_ID, useCalendarStore } from "@/store/calendarStore";
 
-type Tab = "week" | "preferences" | "overlap" | "walk" | "share" | "sync";
-
-const TAB_META: Record<Tab, { title: string; blurb: string }> = {
-  week: {
-    title: "Command the week",
-    blurb: "Classes, exams, and arranged blocks on one grid. Click any event to edit or pin.",
-  },
-  preferences: {
-    title: "Protect the non-negotiables",
-    blurb: "Gym, downtime, social. The arranger finds free windows and places them for you.",
-  },
-  overlap: {
-    title: "Find the hangout gap",
-    blurb: "Shared free time with Alex, ranked by length. No when2meet painting.",
-  },
-  walk: {
-    title: "Respect the campus map",
-    blurb: "Leave-by cues and tight Boelter↔Bunche warnings before you sprint.",
-  },
-  share: {
-    title: "One link, free/busy only",
-    blurb: "Friends see availability, never titles or locations.",
-  },
-  sync: {
-    title: "Keep calendars honest",
-    blurb: "Two-way Google sync when configured. Demo reconcile works without keys.",
-  },
-};
+type Nav = "calendar" | "friends" | "settings";
+type CalView = "week" | "year";
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("week");
+  const [nav, setNav] = useState<Nav>("calendar");
+  const [calView, setCalView] = useState<CalView>("week");
+  const [year, setYear] = useState(DEMO_YEAR);
   const [selected, setSelected] = useState<CalEvent | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [walkOpen, setWalkOpen] = useState(false);
 
   const events = useCalendarStore((s) => s.events);
   const weekStartISO = useCalendarStore((s) => s.weekStartISO);
+  const setWeekStart = useCalendarStore((s) => s.setWeekStart);
   const people = useCalendarStore((s) => s.people);
-  const preferences = useCalendarStore((s) => s.preferences);
   const hydrateFromServer = useCalendarStore((s) => s.hydrateFromServer);
   const resetDemo = useCalendarStore((s) => s.resetDemo);
   const upsertEvent = useCalendarStore((s) => s.upsertEvent);
@@ -59,7 +37,6 @@ export default function Home() {
   const rearrange = useCalendarStore((s) => s.rearrange);
 
   const you = people.find((p) => p.id === YOU_ID);
-  const yourEvents = events.filter((e) => e.personId === YOU_ID);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,121 +75,186 @@ export default function Home() {
     [events, you]
   );
 
-  const tightCount = cues.filter((c) => c.tight).length;
-  const meta = TAB_META[tab];
+  const tight = cues.filter((c) => c.tight);
+  const examCount = events.filter(
+    (e) => e.personId === YOU_ID && (e.kind === "exam" || e.kind === "due_date")
+  ).length;
+
+  function jumpToDay(iso: string) {
+    setWeekStart(weekStartMonday(iso));
+    setCalView("week");
+    setNav("calendar");
+  }
 
   return (
-    <div className="chaos-root">
+    <div className="chaos-root app-mode">
       <div className="chaos-noise" aria-hidden="true" />
-      <div className="chaos-slash" aria-hidden="true" />
 
-      <main className="app-shell">
-        <header className="masthead">
-          <div className="masthead-brand">
-            <p className="brand">
+      <div className="app-frame">
+        <header className="app-bar">
+          <div className="app-bar-left">
+            <p className="app-logo">
               Intelli<span>Cal</span>
             </p>
-            <p className="chaos-stamp">CHAOS → ORDER</p>
+            <span className="app-mark">CHAOS</span>
+            <nav className="app-nav" aria-label="Primary">
+              {(
+                [
+                  ["calendar", "Calendar"],
+                  ["friends", "Friends"],
+                  ["settings", "Settings"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`app-nav-btn${nav === id ? " active" : ""}`}
+                  onClick={() => setNav(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
           </div>
 
-          <div className="masthead-copy">
-            <h1>
-              Your quarter,
-              <span className="strike"> scrambled</span>
-              <span className="volt-text"> arranged.</span>
-            </h1>
-            <p className="lede">
-              Syllabi, walk times, gym blocks, and friend overlap in one production calendar.
-              Built for Week 1 chaos. Tuned for daily use.
-            </p>
-          </div>
-
-          <div className="masthead-actions">
-            <Button variant="secondary" onClick={resetDemo}>
-              Reset demo
+          <div className="app-bar-right">
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              Import syllabus
             </Button>
-            <Button onClick={rearrange}>Re-arrange</Button>
+            <Button variant="secondary" onClick={rearrange}>
+              Re-arrange
+            </Button>
+            <Button variant="ghost" onClick={resetDemo}>
+              Reset
+            </Button>
           </div>
-
-          <dl className="stat-strip" aria-label="Schedule snapshot">
-            <div>
-              <dt>Events</dt>
-              <dd>{yourEvents.length}</dd>
-            </div>
-            <div>
-              <dt>Prefs</dt>
-              <dd>{preferences.length}</dd>
-            </div>
-            <div>
-              <dt>Tight walks</dt>
-              <dd className={tightCount ? "hot" : undefined}>{tightCount}</dd>
-            </div>
-            <div>
-              <dt>Week of</dt>
-              <dd className="mono">{weekStartISO}</dd>
-            </div>
-          </dl>
         </header>
 
-        <TabBar
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { id: "week", label: "My Week", hint: "Grid" },
-            { id: "preferences", label: "Preferences", hint: "Arrange" },
-            { id: "overlap", label: "Overlap", hint: "Friends" },
-            { id: "walk", label: "Walk", hint: "Campus" },
-            { id: "share", label: "Share", hint: "Link" },
-            { id: "sync", label: "Sync", hint: "Google" },
-          ]}
+        <main className="app-main">
+          {nav === "calendar" && (
+            <section className="workspace">
+              <div className="workspace-toolbar">
+                <div className="view-switch" role="group" aria-label="Calendar view">
+                  <button
+                    type="button"
+                    className={calView === "week" ? "active" : ""}
+                    onClick={() => setCalView("week")}
+                  >
+                    Week
+                  </button>
+                  <button
+                    type="button"
+                    className={calView === "year" ? "active" : ""}
+                    onClick={() => setCalView("year")}
+                  >
+                    Year
+                  </button>
+                </div>
+
+                {calView === "week" ? (
+                  <div className="week-nav">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setWeekStart(addDaysISO(weekStartISO, -7))}
+                    >
+                      Prev
+                    </Button>
+                    <p className="week-label">{formatDayLabel(weekStartISO)} week</p>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setWeekStart(addDaysISO(weekStartISO, 7))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="week-nav">
+                    <Button variant="secondary" onClick={() => setYear((y) => y - 1)}>
+                      Prev
+                    </Button>
+                    <p className="week-label">{year}</p>
+                    <Button variant="secondary" onClick={() => setYear((y) => y + 1)}>
+                      Next
+                    </Button>
+                  </div>
+                )}
+
+                <div className="toolbar-meta">
+                  <Badge tone="accent">{examCount} key dates</Badge>
+                  {tight.length > 0 ? (
+                    <button
+                      type="button"
+                      className="alert-chip"
+                      onClick={() => setWalkOpen((v) => !v)}
+                    >
+                      {tight.length} tight walk{tight.length === 1 ? "" : "s"}
+                    </button>
+                  ) : (
+                    <Badge tone="good">Walks clear</Badge>
+                  )}
+                </div>
+              </div>
+
+              {walkOpen && tight.length > 0 ? (
+                <div className="inline-alerts">
+                  {tight.map((c) => (
+                    <p key={`${c.fromEventId}-${c.toEventId}`}>
+                      <strong>
+                        {c.fromLabel} → {c.toLabel}
+                      </strong>
+                      : {c.gapMin} min gap, needs {c.travelMin + 5} min
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="workspace-body panel">
+                {calView === "week" ? (
+                  <WeekCalendar
+                    events={events}
+                    personId={YOU_ID}
+                    weekStart={weekStartISO}
+                    cues={cues}
+                    onEventClick={setSelected}
+                  />
+                ) : (
+                  <YearCalendar
+                    year={year}
+                    events={events}
+                    personId={YOU_ID}
+                    onSelectDay={jumpToDay}
+                    onEventClick={setSelected}
+                  />
+                )}
+              </div>
+            </section>
+          )}
+
+          {nav === "friends" && <FriendsView />}
+          {nav === "settings" && <SettingsView />}
+        </main>
+      </div>
+
+      <SyllabusModal open={importOpen} onClose={() => setImportOpen(false)} />
+
+      {selected ? (
+        <EventModal
+          event={selected}
+          onClose={() => setSelected(null)}
+          onSave={(e) => {
+            upsertEvent(e);
+            setSelected(null);
+          }}
+          onDelete={(id) => {
+            removeEvent(id);
+            setSelected(null);
+          }}
+          onPin={(id) => {
+            pinEvent(id);
+            setSelected(null);
+          }}
         />
-
-        <div className="view-banner" key={tab}>
-          <p className="kicker">Active module</p>
-          <h2>{meta.title}</h2>
-          <p className="subtitle">{meta.blurb}</p>
-        </div>
-
-        {tab === "week" && (
-          <div className="stack">
-            <Section kicker="01 / Calendar" title="This week" subtitle={meta.blurb}>
-              <WeekCalendar
-                events={events}
-                personId={YOU_ID}
-                weekStart={weekStartISO}
-                cues={cues}
-                onEventClick={setSelected}
-              />
-            </Section>
-            <SyllabusIntake />
-          </div>
-        )}
-
-        {tab === "preferences" && <PreferencesPanel />}
-        {tab === "overlap" && <OverlapView />}
-        {tab === "walk" && <WalkAlerts />}
-        {tab === "share" && <SharePanel />}
-        {tab === "sync" && <SyncPanel />}
-
-        {selected ? (
-          <EventModal
-            event={selected}
-            onClose={() => setSelected(null)}
-            onSave={(e) => {
-              upsertEvent(e);
-              setSelected(null);
-            }}
-            onDelete={(id) => {
-              removeEvent(id);
-              setSelected(null);
-            }}
-            onPin={(id) => {
-              pinEvent(id);
-              setSelected(null);
-            }}
-          />
-        ) : null}
-      </main>
+      ) : null}
     </div>
   );
 }
