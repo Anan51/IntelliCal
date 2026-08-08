@@ -6,6 +6,8 @@ export const people: Person[] = [
 ];
 
 /** Demo week: Mon 2026-09-28 (UCLA-ish fall vibe) */
+export const DEMO_WEEK_START = "2026-09-28";
+
 export const demoEvents: CalEvent[] = [
   {
     id: "cs31-lec-mon",
@@ -23,6 +25,15 @@ export const demoEvents: CalEvent[] = [
     end: "2026-09-30T11:50:00",
     building: "Boelter",
     kind: "lecture",
+    personId: "you",
+  },
+  {
+    id: "cs31-disc-fri",
+    title: "CS 31 Discussion",
+    start: "2026-10-02T12:00:00",
+    end: "2026-10-02T12:50:00",
+    building: "Boelter",
+    kind: "discussion",
     personId: "you",
   },
   {
@@ -44,6 +55,15 @@ export const demoEvents: CalEvent[] = [
     personId: "you",
   },
   {
+    id: "oh-wed",
+    title: "TA Office Hours",
+    start: "2026-09-30T12:00:00",
+    end: "2026-09-30T13:00:00",
+    building: "Bunche",
+    kind: "other",
+    personId: "you",
+  },
+  {
     id: "gym-mon",
     title: "Gym",
     start: "2026-09-28T18:00:00",
@@ -52,8 +72,16 @@ export const demoEvents: CalEvent[] = [
     personId: "you",
   },
   {
+    id: "gym-wed",
+    title: "Gym",
+    start: "2026-09-30T18:00:00",
+    end: "2026-09-30T19:00:00",
+    kind: "busy",
+    personId: "you",
+  },
+  {
     id: "alex-busy-tue",
-    title: "Alex class",
+    title: "Alex — Econ Lecture",
     start: "2026-09-29T09:00:00",
     end: "2026-09-29T11:00:00",
     kind: "lecture",
@@ -61,10 +89,18 @@ export const demoEvents: CalEvent[] = [
   },
   {
     id: "alex-busy-thu",
-    title: "Alex class",
+    title: "Alex — Lab",
     start: "2026-10-01T13:00:00",
     end: "2026-10-01T16:00:00",
     kind: "lecture",
+    personId: "alex",
+  },
+  {
+    id: "alex-gym-mon",
+    title: "Alex — Gym",
+    start: "2026-09-28T17:00:00",
+    end: "2026-09-28T18:30:00",
+    kind: "busy",
     personId: "alex",
   },
 ];
