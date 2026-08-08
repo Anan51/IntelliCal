@@ -1,6 +1,7 @@
 import type { CalEvent } from "./types";
+import { DEMO_WEEK_START } from "./demo-data";
 
-export type Slot = { start: Date; end: Date };
+export type Slot = { start: Date; end: Date; dayISO: string };
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && bStart < aEnd;
@@ -26,7 +27,38 @@ export function freeOverlap(
     const conflict = busy.some((e) =>
       overlaps(start, end, new Date(e.start), new Date(e.end))
     );
-    if (!conflict) result.push({ start, end });
+    if (!conflict) result.push({ start, end, dayISO });
   }
   return result;
+}
+
+/** Free overlap across Mon–Fri of the demo week. */
+export function freeOverlapWeek(
+  events: CalEvent[],
+  personA: string,
+  personB: string,
+  weekStartISO = DEMO_WEEK_START,
+  days = 5,
+  windowStartHour = 9,
+  windowEndHour = 21,
+  slotMinutes = 60
+): Slot[] {
+  const all: Slot[] = [];
+  const [y, m, d] = weekStartISO.split("-").map(Number);
+  for (let day = 0; day < days; day++) {
+    const dt = new Date(y, m - 1, d + day);
+    const dayISO = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    all.push(
+      ...freeOverlap(
+        events,
+        personA,
+        personB,
+        dayISO,
+        windowStartHour,
+        windowEndHour,
+        slotMinutes
+      )
+    );
+  }
+  return all;
 }
