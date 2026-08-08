@@ -23,12 +23,16 @@ npm start
 
 ## Demo script (~90–110 seconds)
 
-1. **Problem (15s):** Week 1 — four syllabi PDFs + group chat asking "when are you free?" Everyone opens when2meet and paints blocks by hand. Empty calendar slots aren't always social-ready.
-2. **Syllabus → calendar (20s):** On **My Week**, click **Load sample syllabus**, then **Parse into calendar**. CS 31 lectures, discussion, midterm, and final appear on the week grid (color-coded by kind). Soft gym / quiet-hour prefs show as dashed or muted blocks.
-3. **Preferences (15s):** Open **Preferences**. Gym is soft Mon/Wed 6–7pm; quiet hours are hard before 10am. Toggle gym hard ↔ soft. Refresh — prefs survive via localStorage. Optionally click an empty hour on My Week → **Protect this**.
-4. **Friend overlap (25s):** Switch to **Friend Overlap**. Mode defaults to **Balanced** (soft prefs count as busy). Green cells = shared free time with Alex. Switch to **Max** or **Strict** — soft gym frees up Wed 6–7pm for hangouts. Soft prefs show as generic **Busy** on the friend view (labels stay private).
-5. **Walk alerts (15s):** Open **Walk Alerts**. Wed shows a tight Boelter → Bunche transition (CS 31 ends 11:50, office hours at Bunche 12:00 — only 10 min gap, 12 min walk).
-6. **Close (10s):** Academic calendar + prefs become the input to social planning. No OAuth required for the demo.
+1. **Problem (10s):** Week 1 — syllabi + “when are you free?” Empty slots aren’t always social-ready.
+2. **Week (20s):** Open **Week**. Classes show as Google Calendar–style solid blocks; soft/hard prefs use muted fills with a left rail. Click empty hour → Protect time.
+3. **Connect calendar (20s):** Click **Connect calendar** (demo import — real Google OAuth is Phase 2). Extra busy blocks appear; accept a preference suggestion from calendar patterns.
+4. **Preferences (15s):** Open **Preferences**. One-tap templates, hard/soft, fixed or flexible. Survives refresh (localStorage).
+5. **Find time (20s):** **Balanced** hides soft gym from hangouts with Alex; switch **Max** to ignore soft. Soft prefs show as Busy (no label leak).
+6. **Walks (10s):** Wed Boelter → Bunche tight gap.
+
+## Calendar connect
+
+Phase 1 uses a **demo Connect calendar** that imports mock Google Calendar busy blocks and preference suggestions (Accept / Dismiss). Real Google OAuth + `calendar.readonly` is Phase 2 — no secrets required for the demo.
 
 ## What's built (Phase 1)
 

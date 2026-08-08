@@ -5,64 +5,79 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Night library — Cron/Notion Calendar restraint
-  Near-black canvas, hairline grids, electric blue accent only when needed.
+  Design system — Google Calendar blocks + Notion Calendar grid
+  WCAG AA on dark: body text ≥4.5:1, UI text ≥3:1 for large/UI
 */
 :root {
-  --bg: #07090f;
-  --surface: #0d111a;
-  --surface-2: #121826;
-  --elevated: #161d2e;
-  --text: #eef2ff;
-  --text-secondary: #9aa6c2;
-  --hairline: rgba(255, 255, 255, 0.06);
-  --hairline-strong: rgba(255, 255, 255, 0.1);
-  --accent-bright: #5b8cff;
-  --green: #3ecf8e;
-  --green-dim: rgba(62, 207, 142, 0.14);
-  --warn: #e8b86d;
-  --warn-bg: rgba(232, 184, 109, 0.1);
-  --lecture: #4f7cff;
-  --discussion: #6b8afe;
-  --exam: #e57373;
-  --busy: #5a6478;
-  --other: #4db8c9;
-  --pref-soft-fill: rgba(91, 140, 255, 0.12);
-  --pref-soft-border: rgba(91, 140, 255, 0.45);
-  --pref-hard-fill: #2a3142;
-  --radius: 0.5rem;
+  /* Surfaces — Cron near-black, no tinted navy “AI dark” */
+  --bg: #0b0b0c;
+  --surface: #111113;
+  --surface-2: #18181b;
+  --elevated: #1c1c1f;
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
 
-  --background: #07090f;
-  --foreground: #eef2ff;
-  --card: #0d111a;
-  --card-foreground: #eef2ff;
-  --popover: #121826;
-  --popover-foreground: #eef2ff;
-  --primary: #5b8cff;
-  --primary-foreground: #f8fafc;
-  --secondary: #161d2e;
-  --secondary-foreground: #eef2ff;
-  --muted: #121826;
-  --muted-foreground: #9aa6c2;
-  --accent: #161d2e;
-  --accent-foreground: #eef2ff;
-  --destructive: #e57373;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #5b8cff;
-  --chart-1: #4f7cff;
-  --chart-2: #3ecf8e;
-  --chart-3: #e8b86d;
-  --chart-4: #6b8afe;
-  --chart-5: #4db8c9;
-  --sidebar: #0a0d14;
-  --sidebar-foreground: #eef2ff;
-  --sidebar-primary: #5b8cff;
-  --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #121826;
-  --sidebar-accent-foreground: #eef2ff;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #5b8cff;
+  /* Text — AA on #0b0b0c */
+  --text: #f4f4f5; /* ~18:1 */
+  --text-secondary: #a1a1aa; /* ~7:1 */
+  --text-tertiary: #71717a; /* ~4.6:1 — min for secondary labels */
+
+  /* Accent */
+  --primary: #3b82f6;
+  --primary-fg: #ffffff;
+  --green: #34d399; /* mint free — AA on dark for large text */
+  --green-dim: rgba(52, 211, 153, 0.16);
+  --warn: #fbbf24;
+  --warn-fg: #0b0b0c;
+
+  /* Event kinds — GCal “Modern” solid + white text */
+  --lecture: #2563eb;
+  --discussion: #4f46e5;
+  --exam: #dc2626;
+  --busy: #52525b;
+  --other: #0d9488;
+
+  /* Prefs — Notion soft fills with AA text */
+  --pref-soft-bg: #1e3a5f;
+  --pref-soft-fg: #dbeafe; /* ≥4.5:1 on soft-bg */
+  --pref-soft-rail: #60a5fa;
+  --pref-hard-bg: #27272a;
+  --pref-hard-fg: #f4f4f5;
+  --pref-hard-rail: #a1a1aa;
+
+  --radius: 4px; /* GCal-like, not pill/card */
+
+  /* shadcn map */
+  --background: #0b0b0c;
+  --foreground: #f4f4f5;
+  --card: #111113;
+  --card-foreground: #f4f4f5;
+  --popover: #18181b;
+  --popover-foreground: #f4f4f5;
+  --primary-foreground: #ffffff;
+  --secondary: #18181b;
+  --secondary-foreground: #f4f4f5;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #18181b;
+  --accent-foreground: #f4f4f5;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #3b82f6;
+  --sidebar: #0b0b0c;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #3b82f6;
+  --chart-1: #2563eb;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #4f46e5;
+  --chart-5: #0d9488;
 }
 
 @theme inline {
@@ -92,10 +107,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -119,68 +134,22 @@
     min-height: 100vh;
   }
 
-  /* Tabular nums for time gutters */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* Soft preference subtle wash — used as utility if needed */
-.pref-hatch {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 3px,
-    rgba(91, 140, 255, 0.06) 3px,
-    rgba(91, 140, 255, 0.06) 6px
-  );
-}
-
-.cal-block-soft {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 4px,
-    rgba(91, 140, 255, 0.05) 4px,
-    rgba(91, 140, 255, 0.05) 8px
-  );
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes soft-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(62, 207, 142, 0);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.12);
-  }
-}
-
-.animate-fade-up {
-  animation: fade-up 0.35s ease-out both;
-}
-
-.overlap-glow {
-  background: rgba(62, 207, 142, 0.11);
+/* Free slot — quiet mint wash, no animation */
+.overlap-cell {
+  background: var(--green-dim);
 }
 
 .cal-cell-hit:hover {
-  background: rgba(91, 140, 255, 0.06);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .cal-cell-hit:focus-visible {
-  outline: 1px solid var(--ring);
-  outline-offset: -1px;
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
   z-index: 1;
 }

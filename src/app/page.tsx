@@ -12,6 +12,11 @@ import {
   preferencesToEvents,
   savePreferences,
 } from "@/lib/preferences";
+import {
+  MOCK_GCAL_EVENTS,
+  MOCK_PREF_SUGGESTIONS,
+  type PrefSuggestion,
+} from "@/lib/mock-gcal";
 import AppShell, { type AppTab } from "@/components/AppShell";
 import WeekCalendar from "@/components/WeekCalendar";
 import SyllabusPaste from "@/components/SyllabusPaste";
@@ -19,11 +24,14 @@ import OverlapView from "@/components/OverlapView";
 import WalkAlerts from "@/components/WalkAlerts";
 import PreferencesPanel from "@/components/PreferencesPanel";
 import ProtectThisDialog from "@/components/ProtectThisDialog";
-import OnboardingChecklist from "@/components/OnboardingChecklist";
 import EventPrefSheet from "@/components/EventPrefSheet";
+import SuggestionCards from "@/components/SuggestionCards";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+
+const CONNECTED_KEY = "intellical:gcal-connected:v1";
+const DISMISSED_KEY = "intellical:suggestions-dismissed:v1";
 
 export default function Home() {
   const [events, setEvents] = useState<CalEvent[]>(demoEvents);
@@ -36,9 +44,18 @@ export default function Home() {
     null
   );
   const [editingPrefId, setEditingPrefId] = useState<string | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     setPreferences(loadPreferences());
+    try {
+      setCalendarConnected(localStorage.getItem(CONNECTED_KEY) === "1");
+      const raw = localStorage.getItem(DISMISSED_KEY);
+      if (raw) setDismissedSuggestions(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
     setPrefsHydrated(true);
   }, []);
 
@@ -46,6 +63,16 @@ export default function Home() {
     if (!prefsHydrated) return;
     savePreferences(preferences);
   }, [preferences, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    if (!calendarConnected) return;
+    setEvents((prev) => {
+      const withoutGcal = prev.filter((e) => e.source !== "gcal");
+      const toAdd = MOCK_GCAL_EVENTS.filter((g) => !withoutGcal.some((e) => e.id === g.id));
+      return [...withoutGcal, ...toAdd];
+    });
+  }, [calendarConnected, prefsHydrated]);
 
   const prefEvents = useMemo(() => preferencesToEvents(preferences), [preferences]);
   const allEvents = useMemo(() => [...events, ...prefEvents], [events, prefEvents]);
@@ -58,8 +85,16 @@ export default function Home() {
     [allEvents, overlapMode]
   );
   const warnings = useMemo(() => tightTransitions(events, "you"), [events]);
-  const hasSyllabusExtras = events.some((e) => e.id.startsWith("parsed-"));
   const editingPref = preferences.find((p) => p.id === editingPrefId) ?? null;
+
+  const openSuggestions = useMemo(() => {
+    if (!calendarConnected) return [];
+    return MOCK_PREF_SUGGESTIONS.filter((s) => {
+      if (dismissedSuggestions.includes(s.id)) return false;
+      // Don't suggest if category already present
+      return !preferences.some((p) => p.category === s.draft.category);
+    });
+  }, [calendarConnected, dismissedSuggestions, preferences]);
 
   function handleParsed(parsed: CalEvent[]) {
     setEvents((prev) => {
@@ -75,60 +110,82 @@ export default function Home() {
     setProtectSlot(null);
   }
 
+  function connectCalendar() {
+    setCalendarConnected(true);
+    localStorage.setItem(CONNECTED_KEY, "1");
+    setTab("week");
+  }
+
+  function acceptSuggestion(s: PrefSuggestion) {
+    setPreferences((prev) => {
+      if (prev.some((p) => p.category === s.draft.category || p.id === s.draft.id)) {
+        return prev;
+      }
+      return [...prev, { ...s.draft, id: s.draft.id }];
+    });
+  }
+
+  function dismissSuggestion(id: string) {
+    setDismissedSuggestions((prev) => {
+      const next = [...prev, id];
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   return (
     <AppShell
       tab={tab}
       onTabChange={setTab}
-      prefCount={preferences.length}
-      walkCount={warnings.length}
+      calendarConnected={calendarConnected}
+      onConnectCalendar={connectCalendar}
     >
       {tab === "week" && (
-        <div className="mx-auto max-w-5xl space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">My Week</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                Sep 28 – Oct 2 · click an empty hour to protect it
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-4">
+        <div className="mx-auto max-w-5xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-[20px] font-semibold tracking-tight text-[var(--text)]">
+              Week of Sep 28
+            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              {!calendarConnected && (
+                <Button size="sm" variant="outline" onClick={connectCalendar}>
+                  Connect calendar
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <Switch
                   id="show-prefs"
                   checked={showPreferences}
                   onCheckedChange={setShowPreferences}
                 />
-                <Label htmlFor="show-prefs" className="text-[12px] text-muted-foreground">
-                  Show preferences
+                <Label
+                  htmlFor="show-prefs"
+                  className="text-[12px] text-[var(--text-secondary)]"
+                >
+                  Preferences
                 </Label>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setTab("preferences")}
-              >
-                Edit preferences
+              <Button size="sm" variant="ghost" onClick={() => setTab("preferences")}>
+                Edit
               </Button>
             </div>
           </div>
-
-          <OnboardingChecklist
-            hasSyllabusExtras={hasSyllabusExtras}
-            prefCount={preferences.length}
-            walkCount={warnings.length}
-            onGoPreferences={() => setTab("preferences")}
-          />
 
           {warnings.length > 0 && (
             <button
               type="button"
               onClick={() => setTab("walk")}
-              className="w-full rounded-md border border-[rgba(232,184,109,0.25)] bg-[var(--warn-bg)] px-3 py-2 text-left text-[12px] text-[var(--warn)] transition-colors hover:border-[rgba(232,184,109,0.4)]"
+              className="text-left text-[12px] text-[var(--warn)] hover:underline"
             >
               {warnings[0].message}
-              {warnings.length > 1 ? ` · +${warnings.length - 1} more` : ""} →
             </button>
           )}
+
+          <SuggestionCards
+            suggestions={openSuggestions}
+            onAccept={acceptSuggestion}
+            onDismiss={dismissSuggestion}
+          />
 
           <WeekCalendar
             events={myWeekEvents}

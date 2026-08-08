@@ -9,11 +9,10 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   onParsed: (events: CalEvent[]) => void;
-  defaultOpen?: boolean;
 };
 
-export default function SyllabusPaste({ onParsed, defaultOpen = false }: Props) {
-  const [open, setOpen] = useState(defaultOpen);
+export default function SyllabusPaste({ onParsed }: Props) {
+  const [open, setOpen] = useState(false);
   const [syllabus, setSyllabus] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastCount, setLastCount] = useState<number | null>(null);
@@ -22,8 +21,7 @@ export default function SyllabusPaste({ onParsed, defaultOpen = false }: Props) 
     setLoading(true);
     try {
       const res = await fetch("/sample-syllabus.txt");
-      const text = await res.text();
-      setSyllabus(text);
+      setSyllabus(await res.text());
       setOpen(true);
     } finally {
       setLoading(false);
@@ -37,22 +35,17 @@ export default function SyllabusPaste({ onParsed, defaultOpen = false }: Props) 
   }
 
   return (
-    <div className="rounded-lg border border-[var(--hairline)] bg-[var(--surface)]">
+    <div className="border-t border-[var(--hairline)] pt-3">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        className="flex w-full items-center justify-between py-1 text-left"
         aria-expanded={open}
       >
-        <div>
-          <div className="text-[13px] font-medium">Add from syllabus</div>
-          <div className="text-[11px] text-muted-foreground">
-            Paste text or load the sample CS 31 syllabus
-          </div>
-        </div>
+        <span className="text-[13px] text-[var(--text-secondary)]">Add from syllabus</span>
         <ChevronDown
           className={cn(
-            "size-4 text-muted-foreground transition-transform",
+            "size-4 text-[var(--text-tertiary)] transition-transform",
             open && "rotate-180"
           )}
           aria-hidden
@@ -60,16 +53,16 @@ export default function SyllabusPaste({ onParsed, defaultOpen = false }: Props) 
       </button>
 
       {open && (
-        <div className="border-t border-[var(--hairline)] px-4 py-3">
+        <div className="mt-2 space-y-2">
           <textarea
-            className="min-h-[120px] w-full resize-y rounded-md border border-[var(--hairline)] bg-[var(--surface-2)] p-3 font-mono text-[12px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-h-[100px] w-full resize-y rounded border border-[var(--hairline)] bg-[var(--surface)] p-3 font-mono text-[12px] text-[var(--text)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             value={syllabus}
             onChange={(e) => setSyllabus(e.target.value)}
-            rows={6}
+            rows={5}
             placeholder="Paste syllabus text…"
             aria-label="Syllabus text"
           />
-          <div className="mt-2.5 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={loadSample} disabled={loading}>
               {loading ? "Loading…" : "Load sample"}
             </Button>
@@ -78,9 +71,7 @@ export default function SyllabusPaste({ onParsed, defaultOpen = false }: Props) 
             </Button>
           </div>
           {lastCount !== null && (
-            <p className="mt-2 text-[12px] text-[var(--green)]">
-              Added {lastCount} event{lastCount === 1 ? "" : "s"}.
-            </p>
+            <p className="text-[12px] text-[var(--green)]">Added {lastCount} events.</p>
           )}
         </div>
       )}

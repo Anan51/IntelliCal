@@ -422,10 +422,10 @@ export default function PreferencesPanel({ preferences, onChange }: Props) {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Preferences</h1>
-        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-          Empty calendar slots aren&apos;t always free. Tell IntelliCal when you want gym,
-          downtime, or quiet mornings — Friend Overlap will respect them.
+        <h1 className="text-[20px] font-semibold tracking-tight">Preferences</h1>
+        <p className="mt-1 max-w-lg text-[13px] text-[var(--text-secondary)]">
+          Empty slots aren&apos;t always free. Soft prefs hide from Balanced hangouts; hard prefs
+          always block.
         </p>
       </div>
 

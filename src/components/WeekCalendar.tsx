@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 const HOUR_START = 8;
 const HOUR_END = 21;
-const HOUR_HEIGHT = 52;
+const HOUR_HEIGHT = 48;
 
+/** GCal Modern solid fills — white text, AA on these blues/reds */
 const KIND_COLORS: Record<CalEvent["kind"], string> = {
   lecture: "var(--lecture)",
   discussion: "var(--discussion)",
@@ -19,9 +20,10 @@ const KIND_COLORS: Record<CalEvent["kind"], string> = {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
-type BlockTone = "class" | "soft" | "hard";
+type BlockTone = "class" | "soft" | "hard" | "gcal";
 
 function getTone(event: CalEvent): BlockTone {
+  if (event.source === "gcal" && !event.preferenceId) return "gcal";
   if (!event.preferenceId) return "class";
   return (event.strength ?? "hard") === "soft" ? "soft" : "hard";
 }
@@ -31,19 +33,16 @@ function getWeekDays(weekStart: string) {
   return DAY_NAMES.map((label, i) => {
     const dt = new Date(y, m - 1, d + i);
     const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-    const date = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return { iso, label, date };
+    const dateNum = String(dt.getDate());
+    return { iso, label, dateNum };
   });
 }
 
-function formatHour(h: number): string {
-  if (h === 12) return "12";
-  if (h > 12) return String(h - 12);
-  return String(h);
-}
-
-function formatHourSuffix(h: number): string {
-  return h >= 12 ? "PM" : "AM";
+function formatHourLabel(h: number): string {
+  if (h === 0) return "12 AM";
+  if (h === 12) return "12 PM";
+  if (h > 12) return `${h - 12} PM`;
+  return `${h} AM`;
 }
 
 function formatClock(iso: string): string {
@@ -61,43 +60,16 @@ function gridPosition(event: CalEvent): CSSProperties {
   const startMin = start.getHours() * 60 + start.getMinutes();
   const endMin = end.getHours() * 60 + end.getMinutes();
   const top = ((startMin - HOUR_START * 60) / 60) * HOUR_HEIGHT;
-  const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT - 3, 22);
+  const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT - 2, 18);
   return { top, height };
 }
 
-/** Shared visual language for calendar blocks — Cron/Notion restraint */
-function blockClasses(tone: BlockTone, kind: CalEvent["kind"]): string {
-  if (tone === "soft") {
-    return cn(
-      "cal-block cal-block-soft",
-      "bg-[rgba(91,140,255,0.1)] text-[#b8c9f0]",
-      "border border-[rgba(91,140,255,0.22)]"
-    );
-  }
-  if (tone === "hard") {
-    return cn(
-      "cal-block cal-block-hard",
-      "bg-[rgba(255,255,255,0.04)] text-[#aeb8cc]",
-      "border border-[rgba(255,255,255,0.08)]"
-    );
-  }
-  return cn("cal-block cal-block-class text-white border border-transparent");
-}
-
-function blockInlineStyle(tone: BlockTone, kind: CalEvent["kind"]): CSSProperties {
-  if (tone === "class") {
-    return {
-      background: KIND_COLORS[kind],
-      boxShadow: `inset 2px 0 0 rgba(255,255,255,0.35)`,
-    };
-  }
-  if (tone === "soft") {
-    return { boxShadow: `inset 2px 0 0 rgba(91,140,255,0.7)` };
-  }
-  return { boxShadow: `inset 2px 0 0 rgba(148,163,184,0.55)` };
-}
-
-function EventBlock({
+/**
+ * Event chip — Google Calendar week-view language:
+ * solid fill + white title for classes; muted solid for busy/gcal;
+ * Notion-soft for preferences (readable fg on tinted bg, left rail).
+ */
+function EventChip({
   event,
   hidePrefLabels,
   compact,
@@ -115,16 +87,33 @@ function EventBlock({
   const tone = getTone(event);
   const title = displayTitle(event, hidePrefLabels);
   const clickable = Boolean(onClick);
-  const meta = [
-    formatClock(event.start),
-    !compact ? `– ${formatClock(event.end)}` : null,
-    event.building && !hidePrefLabels ? event.building : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
-  const strengthHint =
-    !hidePrefLabels && tone !== "class" ? (tone === "soft" ? "Soft" : "Hard") : null;
+  const visual: CSSProperties =
+    tone === "soft"
+      ? {
+          background: "var(--pref-soft-bg)",
+          color: "var(--pref-soft-fg)",
+          boxShadow: "inset 3px 0 0 var(--pref-soft-rail)",
+        }
+      : tone === "hard"
+        ? {
+            background: "var(--pref-hard-bg)",
+            color: "var(--pref-hard-fg)",
+            boxShadow: "inset 3px 0 0 var(--pref-hard-rail)",
+          }
+        : tone === "gcal"
+          ? {
+              background: "var(--busy)",
+              color: "#fafafa",
+              boxShadow: "inset 3px 0 0 rgba(255,255,255,0.35)",
+            }
+          : {
+              background: KIND_COLORS[event.kind],
+              color: "#ffffff",
+              boxShadow: "inset 3px 0 0 rgba(0,0,0,0.25)",
+            };
+
+  const showStrength = !hidePrefLabels && (tone === "soft" || tone === "hard");
 
   return (
     <button
@@ -135,46 +124,41 @@ function EventBlock({
         onClick?.();
       }}
       className={cn(
-        "overflow-hidden rounded-[3px] text-left transition-[filter,background-color]",
-        blockClasses(tone, event.kind),
+        "overflow-hidden rounded text-left",
         clickable ? "cursor-pointer hover:brightness-110" : "cursor-default",
         className
       )}
-      style={{ ...blockInlineStyle(tone, event.kind), ...style }}
-      title={[title, strengthHint, meta].filter(Boolean).join(" · ")}
-      aria-label={[title, strengthHint ? `${strengthHint} preference` : null, meta]
-        .filter(Boolean)
-        .join(", ")}
+      style={{ ...visual, ...style }}
+      title={title}
+      aria-label={`${title}${showStrength ? `, ${tone} preference` : ""}`}
     >
-      <div className={cn("min-w-0", compact ? "px-1.5 py-1" : "px-2.5 py-2")}>
-        <div className="flex items-start justify-between gap-2">
-          <div
-            className={cn(
-              "truncate font-medium tracking-[-0.01em]",
-              compact ? "text-[11px] leading-tight" : "text-[13px] leading-snug"
-            )}
-          >
-            {title}
-          </div>
-          {strengthHint && (
-            <span
-              className={cn(
-                "shrink-0 uppercase tracking-[0.08em] text-[9px] font-medium opacity-55",
-                compact && "mt-0.5"
-              )}
-            >
-              {strengthHint}
-            </span>
-          )}
-        </div>
+      <div className={cn(compact ? "px-1.5 py-0.5" : "px-2 py-1.5")}>
         <div
           className={cn(
-            "truncate tabular opacity-70",
-            compact ? "mt-0.5 text-[10px] leading-none" : "mt-0.5 text-[11px]"
+            "truncate font-medium",
+            compact ? "text-[11px] leading-tight" : "text-[13px] leading-snug"
           )}
         >
-          {meta}
+          {title}
         </div>
+        {!compact && (
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] tabular opacity-90">
+            <span>
+              {formatClock(event.start)}–{formatClock(event.end)}
+            </span>
+            {event.building && !hidePrefLabels && (
+              <span className="truncate opacity-80">{event.building}</span>
+            )}
+            {showStrength && (
+              <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide opacity-70">
+                {tone}
+              </span>
+            )}
+          </div>
+        )}
+        {compact && event.building && !hidePrefLabels && (
+          <div className="truncate text-[10px] tabular opacity-85">{event.building}</div>
+        )}
       </div>
     </button>
   );
@@ -226,26 +210,24 @@ export default function WeekCalendar({
 
   return (
     <div>
-      {/* Desktop grid */}
-      <div className="hidden overflow-hidden rounded-md border border-[var(--hairline)] bg-[var(--surface)] md:block">
+      {/* Desktop week grid — Notion hairlines, GCal chips */}
+      <div
+        className="hidden md:block"
+        role="grid"
+        aria-label="Week calendar, Monday through Friday, 8 AM to 9 PM"
+      >
         <div
           className="grid"
-          style={{ gridTemplateColumns: "52px repeat(5, minmax(0, 1fr))" }}
-          role="grid"
-          aria-label="Week calendar Monday through Friday, 8 AM to 9 PM"
+          style={{ gridTemplateColumns: "56px repeat(5, minmax(0, 1fr))" }}
         >
-          <div className="border-b border-[var(--hairline)]" />
+          <div />
           {days.map((d) => (
-            <div
-              key={d.iso}
-              className="border-b border-l border-[var(--hairline)] px-2 py-2 text-center"
-              role="columnheader"
-            >
-              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <div key={d.iso} className="pb-2 text-center" role="columnheader">
+              <div className="text-[11px] font-medium text-[var(--text-secondary)]">
                 {d.label}
               </div>
-              <div className="mt-0.5 text-[12px] font-medium tabular text-foreground/90">
-                {d.date}
+              <div className="text-[18px] font-medium tabular tracking-tight text-[var(--text)]">
+                {d.dateNum}
               </div>
             </div>
           ))}
@@ -260,12 +242,11 @@ export default function WeekCalendar({
             {hours.map((h) => (
               <div
                 key={h}
-                className="flex items-start justify-end border-b border-[var(--hairline)] pr-2 pt-1"
+                className="relative"
                 style={{ height: HOUR_HEIGHT }}
               >
-                <span className="tabular text-[10px] text-muted-foreground/75">
-                  {formatHour(h)}
-                  <span className="ml-0.5 text-[8px] opacity-60">{formatHourSuffix(h)}</span>
+                <span className="absolute -top-2 right-2 tabular text-[11px] text-[var(--text-tertiary)]">
+                  {formatHourLabel(h)}
                 </span>
               </div>
             ))}
@@ -274,10 +255,10 @@ export default function WeekCalendar({
           {days.map((d, colIdx) => (
             <div
               key={d.iso}
+              className="relative border-l border-[var(--hairline)]"
               style={{
                 gridColumn: colIdx + 2,
                 gridRow: 2,
-                position: "relative",
                 height: totalHeight,
               }}
               role="gridcell"
@@ -290,12 +271,12 @@ export default function WeekCalendar({
                   tabIndex={onEmptySlotClick ? 0 : undefined}
                   aria-label={
                     onEmptySlotClick
-                      ? `${d.label} ${formatHour(h)} ${formatHourSuffix(h)}. Protect this time.`
+                      ? `${d.label} ${formatHourLabel(h)}. Protect this time.`
                       : undefined
                   }
                   className={cn(
-                    "border-b border-l border-[var(--hairline)]",
-                    isOverlapCell(d.iso, h) && "overlap-glow",
+                    "border-t border-[var(--hairline)]",
+                    isOverlapCell(d.iso, h) && "overlap-cell",
                     onEmptySlotClick && "cal-cell-hit cursor-pointer"
                   )}
                   style={{ height: HOUR_HEIGHT }}
@@ -314,7 +295,7 @@ export default function WeekCalendar({
               ))}
 
               {eventsForDay(d.iso).map((ev) => (
-                <EventBlock
+                <EventChip
                   key={ev.id}
                   event={ev}
                   hidePrefLabels={hidePreferenceLabels}
@@ -322,7 +303,7 @@ export default function WeekCalendar({
                   onClick={
                     onEventClick && ev.preferenceId ? () => onEventClick(ev) : undefined
                   }
-                  className="absolute left-0.5 right-0.5 z-[2]"
+                  className="absolute left-[2px] right-[2px] z-[2]"
                   style={gridPosition(ev)}
                 />
               ))}
@@ -331,93 +312,53 @@ export default function WeekCalendar({
         </div>
       </div>
 
-      {/* Mobile — timeline list, not day-cards */}
-      <div className="md:hidden" aria-label="Week agenda">
+      {/* Mobile agenda — GCal schedule list */}
+      <div className="md:hidden" aria-label="Week schedule">
         {days.map((d) => {
           const dayEvents = eventsForDay(d.iso).sort(
             (a, b) => +new Date(a.start) - +new Date(b.start)
           );
           return (
-            <section key={d.iso} className="border-b border-[var(--hairline)] py-4 first:pt-0">
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h3 className="text-[12px] font-medium tracking-[-0.01em]">
-                  <span className="text-foreground">{d.label}</span>
-                  <span className="ml-1.5 text-muted-foreground">{d.date}</span>
+            <section key={d.iso} className="border-t border-[var(--hairline)] py-3 first:border-t-0 first:pt-0">
+              <div className="mb-2 flex items-baseline justify-between">
+                <h3 className="text-[13px] font-medium text-[var(--text)]">
+                  {d.label}{" "}
+                  <span className="tabular text-[var(--text-secondary)]">{d.dateNum}</span>
                 </h3>
                 {onEmptySlotClick && (
                   <button
                     type="button"
-                    className="text-[11px] text-muted-foreground transition-colors hover:text-primary"
+                    className="text-[12px] text-[var(--primary)] hover:underline"
                     onClick={() => onEmptySlotClick(d.iso, 15)}
                   >
-                    Protect a time
+                    Protect time
                   </button>
                 )}
               </div>
-
               {dayEvents.length === 0 ? (
-                <p className="pl-[3.25rem] text-[12px] text-muted-foreground/70">Nothing scheduled</p>
+                <p className="text-[12px] text-[var(--text-tertiary)]">No events</p>
               ) : (
-                <ul className="space-y-2">
-                  {dayEvents.map((ev) => {
-                    const start = new Date(ev.start);
-                    const startLabel = start.toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    });
-                    return (
-                      <li key={ev.id} className="grid grid-cols-[3rem_1fr] gap-2">
-                        <div className="pt-2 text-right tabular text-[11px] text-muted-foreground">
-                          {startLabel}
-                        </div>
-                        <EventBlock
-                          event={ev}
-                          hidePrefLabels={hidePreferenceLabels}
-                          onClick={
-                            onEventClick && ev.preferenceId
-                              ? () => onEventClick(ev)
-                              : undefined
-                          }
-                          className="w-full"
-                        />
-                      </li>
-                    );
-                  })}
+                <ul className="space-y-1.5">
+                  {dayEvents.map((ev) => (
+                    <li key={ev.id}>
+                      <EventChip
+                        event={ev}
+                        hidePrefLabels={hidePreferenceLabels}
+                        onClick={
+                          onEventClick && ev.preferenceId
+                            ? () => onEventClick(ev)
+                            : undefined
+                        }
+                        className="w-full"
+                      />
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>
           );
         })}
       </div>
-
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
-        <LegendPip tone="class" label="Class" />
-        <LegendPip tone="soft" label="Soft preference" />
-        <LegendPip tone="hard" label="Hard preference" />
-        {showOverlap && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-[2px] bg-[rgba(62,207,142,0.25)]" aria-hidden />
-            Both free
-          </span>
-        )}
-      </div>
     </div>
-  );
-}
-
-function LegendPip({ tone, label }: { tone: BlockTone; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className={cn(
-          "size-2 rounded-[2px]",
-          tone === "class" && "bg-[var(--lecture)]",
-          tone === "soft" && "bg-[rgba(91,140,255,0.35)] ring-1 ring-[rgba(91,140,255,0.5)]",
-          tone === "hard" && "bg-[rgba(255,255,255,0.12)] ring-1 ring-white/15"
-        )}
-        aria-hidden
-      />
-      {label}
-    </span>
   );
 }
