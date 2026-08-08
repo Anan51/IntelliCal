@@ -177,7 +177,7 @@ export default function WeekCalendar({
         {legendKinds.map((k) => (
           <span key={k} className="legend-item">
             <span className="legend-dot" style={{ background: kindColor(k) }} />
-            {k.replace("_", " ")}
+            {k.replace("_", " ").toLowerCase()}
           </span>
         ))}
         {showOverlap && (
