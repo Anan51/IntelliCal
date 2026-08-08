@@ -55,6 +55,7 @@ export default function SyllabusIntake() {
 
   return (
     <Section
+      kicker="02 / Intake"
       title="Syllabus intake"
       subtitle="Paste a syllabus, review the extracted events, then commit. Nothing is added until you confirm."
       actions={

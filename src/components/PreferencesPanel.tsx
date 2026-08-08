@@ -63,8 +63,9 @@ export default function PreferencesPanel() {
 
   return (
     <Section
+      kicker="Prefs / Arranger"
       title="Preferences"
-      subtitle="Gym, relaxation, and social time are placed into free windows. Dragged blocks pin automatically when you edit them to manual."
+      subtitle="Gym, relaxation, and social time are placed into free windows. Editing a block pins it so rearrange leaves it alone."
       actions={
         <Button variant="secondary" onClick={rearrange}>
           Re-arrange now

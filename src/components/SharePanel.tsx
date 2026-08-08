@@ -59,8 +59,9 @@ export default function SharePanel() {
 
   return (
     <Section
+      kicker="Share / Links"
       title="Share with friends"
-      subtitle="Friends see free/busy times only — never titles or locations. Perfect for hangouts and meetings."
+      subtitle="Friends see free/busy times only. Never titles or locations."
       actions={<Button onClick={createLink}>Create share link</Button>}
     >
       {active.length === 0 ? (

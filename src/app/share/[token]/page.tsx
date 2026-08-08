@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import WeekCalendar from "@/components/WeekCalendar";
 import { Badge, Empty, Section } from "@/components/ui";
@@ -13,6 +13,16 @@ import { useCalendarStore } from "@/store/calendarStore";
 type ShareResponse =
   | { status: "ok"; busy: BusyBlock[]; weekStartISO: string; ownerName: string }
   | { status: "dead" | "expired"; error: string };
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <div className="chaos-root">
+      <div className="chaos-noise" aria-hidden="true" />
+      <div className="chaos-slash" aria-hidden="true" />
+      <main className="app-shell">{children}</main>
+    </div>
+  );
+}
 
 export default function SharePage() {
   const params = useParams<{ token: string }>();
@@ -59,7 +69,6 @@ export default function SharePage() {
 
   const combined = useMemo(() => {
     const mine = visitorEvents.filter((e) => e.personId === YOU_ID || e.personId === ALEX_ID);
-    // Map owner busy onto a synthetic person and reuse overlap vs local "you".
     return [
       ...mine,
       ...ownerBusyAsEvents.map((e) => ({ ...e, personId: "owner" })),
@@ -83,49 +92,79 @@ export default function SharePage() {
 
   if (!data) {
     return (
-      <main className="app-shell">
-        <Section title="Loading share link…">
+      <Shell>
+        <Section kicker="Share" title="Loading share link…">
           <Empty>Fetching free/busy…</Empty>
         </Section>
-      </main>
+      </Shell>
     );
   }
 
   if (data.status !== "ok") {
     return (
-      <main className="app-shell">
-        <Section title="Link unavailable">
+      <Shell>
+        <Section kicker="Dead link" title="Link unavailable">
           <Empty>{data.error}. Ask your friend for a fresh share link.</Empty>
         </Section>
-      </main>
+      </Shell>
     );
   }
 
   return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="brand">IntelliCal</p>
+    <Shell>
+      <header className="masthead">
+        <div className="masthead-brand">
+          <p className="brand">
+            Intelli<span>Cal</span>
+          </p>
+          <p className="chaos-stamp">SHARED FREE/BUSY</p>
+        </div>
+        <div className="masthead-copy">
           <h1>Find a time with {data.ownerName}</h1>
           <p className="lede">
-            You only see free/busy blocks — never class names or locations. Signed-in comparison uses
-            your local demo calendar.
+            Times only. No class names, no locations. Your local demo calendar powers the overlap
+            comparison.
           </p>
         </div>
+        <div className="masthead-actions">
+          <a className="btn btn-secondary" href="/">
+            Back to app
+          </a>
+        </div>
+        <dl className="stat-strip" aria-label="Share snapshot">
+          <div>
+            <dt>Busy blocks</dt>
+            <dd>{data.busy.length}</dd>
+          </div>
+          <div>
+            <dt>Shared slots</dt>
+            <dd>{slots.length}</dd>
+          </div>
+          <div>
+            <dt>Top picks</dt>
+            <dd>{suggestions.length}</dd>
+          </div>
+          <div>
+            <dt>Week of</dt>
+            <dd className="mono">{data.weekStartISO}</dd>
+          </div>
+        </dl>
       </header>
 
-      <div className="stack">
+      <div className="stack" style={{ marginTop: 18 }}>
         <Section
+          kicker="01 / Owner"
           title="Owner availability"
-          subtitle="Busy blocks from the share link (titles stripped)."
+          subtitle="Busy blocks from the share link. Titles stripped on purpose."
         >
           <WeekCalendar events={ownerBusyAsEvents} weekStart={data.weekStartISO} />
         </Section>
 
         <Section
+          kicker="02 / Overlap"
           title="Your overlap"
-          subtitle="Compared against your local IntelliCal week (demo You)."
-          actions={<Badge tone="good">{slots.length} shared slots</Badge>}
+          subtitle="Compared against your local IntelliCal week."
+          actions={<Badge tone="good">{slots.length} shared</Badge>}
         >
           <WeekCalendar
             events={combined}
@@ -135,7 +174,7 @@ export default function SharePage() {
           />
         </Section>
 
-        <Section title="Suggested hangout times">
+        <Section kicker="03 / Suggest" title="Suggested hangout times">
           {suggestions.length === 0 ? (
             <Empty>No overlapping free windows this week.</Empty>
           ) : (
@@ -151,6 +190,6 @@ export default function SharePage() {
           )}
         </Section>
       </div>
-    </main>
+    </Shell>
   );
 }

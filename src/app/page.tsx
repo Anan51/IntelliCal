@@ -16,6 +16,33 @@ import { YOU_ID, useCalendarStore } from "@/store/calendarStore";
 
 type Tab = "week" | "preferences" | "overlap" | "walk" | "share" | "sync";
 
+const TAB_META: Record<Tab, { title: string; blurb: string }> = {
+  week: {
+    title: "Command the week",
+    blurb: "Classes, exams, and arranged blocks on one grid. Click any event to edit or pin.",
+  },
+  preferences: {
+    title: "Protect the non-negotiables",
+    blurb: "Gym, downtime, social. The arranger finds free windows and places them for you.",
+  },
+  overlap: {
+    title: "Find the hangout gap",
+    blurb: "Shared free time with Alex, ranked by length. No when2meet painting.",
+  },
+  walk: {
+    title: "Respect the campus map",
+    blurb: "Leave-by cues and tight Boelter↔Bunche warnings before you sprint.",
+  },
+  share: {
+    title: "One link, free/busy only",
+    blurb: "Friends see availability, never titles or locations.",
+  },
+  sync: {
+    title: "Keep calendars honest",
+    blurb: "Two-way Google sync when configured. Demo reconcile works without keys.",
+  },
+};
+
 export default function Home() {
   const [tab, setTab] = useState<Tab>("week");
   const [selected, setSelected] = useState<CalEvent | null>(null);
@@ -23,6 +50,7 @@ export default function Home() {
   const events = useCalendarStore((s) => s.events);
   const weekStartISO = useCalendarStore((s) => s.weekStartISO);
   const people = useCalendarStore((s) => s.people);
+  const preferences = useCalendarStore((s) => s.preferences);
   const hydrateFromServer = useCalendarStore((s) => s.hydrateFromServer);
   const resetDemo = useCalendarStore((s) => s.resetDemo);
   const upsertEvent = useCalendarStore((s) => s.upsertEvent);
@@ -31,6 +59,7 @@ export default function Home() {
   const rearrange = useCalendarStore((s) => s.rearrange);
 
   const you = people.find((p) => p.id === YOU_ID);
+  const yourEvents = events.filter((e) => e.personId === YOU_ID);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,9 +68,7 @@ export default function Home() {
       .then((data) => {
         if (!cancelled && data) hydrateFromServer(data);
       })
-      .catch(() => {
-        // Client demo seed already loaded in the store.
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -71,82 +98,121 @@ export default function Home() {
     [events, you]
   );
 
+  const tightCount = cues.filter((c) => c.tight).length;
+  const meta = TAB_META[tab];
+
   return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="brand">IntelliCal</p>
-          <h1>Your quarter, already arranged.</h1>
-          <p className="lede">
-            Syllabi in, walk times counted, gym protected, friends overlapping — without painting
-            when2meet by hand.
-          </p>
-        </div>
-        <div className="header-actions">
-          <Button variant="secondary" onClick={resetDemo}>
-            Reset demo
-          </Button>
-          <Button variant="secondary" onClick={rearrange}>
-            Re-arrange prefs
-          </Button>
-        </div>
-      </header>
+    <div className="chaos-root">
+      <div className="chaos-noise" aria-hidden="true" />
+      <div className="chaos-slash" aria-hidden="true" />
 
-      <TabBar
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: "week", label: "My Week" },
-          { id: "preferences", label: "Preferences" },
-          { id: "overlap", label: "Friend Overlap" },
-          { id: "walk", label: "Walk" },
-          { id: "share", label: "Share" },
-          { id: "sync", label: "Sync" },
-        ]}
-      />
+      <main className="app-shell">
+        <header className="masthead">
+          <div className="masthead-brand">
+            <p className="brand">
+              Intelli<span>Cal</span>
+            </p>
+            <p className="chaos-stamp">CHAOS → ORDER</p>
+          </div>
 
-      {tab === "week" && (
-        <div className="stack">
-          <Section
-            title="Your week"
-            subtitle="Demo UCLA schedule with arranged preference blocks. Click an event to edit or pin."
-          >
-            <WeekCalendar
-              events={events}
-              personId={YOU_ID}
-              weekStart={weekStartISO}
-              cues={cues}
-              onEventClick={setSelected}
-            />
-          </Section>
-          <SyllabusIntake />
-        </div>
-      )}
+          <div className="masthead-copy">
+            <h1>
+              Your quarter,
+              <span className="strike"> scrambled</span>
+              <span className="volt-text"> arranged.</span>
+            </h1>
+            <p className="lede">
+              Syllabi, walk times, gym blocks, and friend overlap in one production calendar.
+              Built for Week 1 chaos. Tuned for daily use.
+            </p>
+          </div>
 
-      {tab === "preferences" && <PreferencesPanel />}
-      {tab === "overlap" && <OverlapView />}
-      {tab === "walk" && <WalkAlerts />}
-      {tab === "share" && <SharePanel />}
-      {tab === "sync" && <SyncPanel />}
+          <div className="masthead-actions">
+            <Button variant="secondary" onClick={resetDemo}>
+              Reset demo
+            </Button>
+            <Button onClick={rearrange}>Re-arrange</Button>
+          </div>
 
-      {selected ? (
-        <EventModal
-          event={selected}
-          onClose={() => setSelected(null)}
-          onSave={(e) => {
-            upsertEvent(e);
-            setSelected(null);
-          }}
-          onDelete={(id) => {
-            removeEvent(id);
-            setSelected(null);
-          }}
-          onPin={(id) => {
-            pinEvent(id);
-            setSelected(null);
-          }}
+          <dl className="stat-strip" aria-label="Schedule snapshot">
+            <div>
+              <dt>Events</dt>
+              <dd>{yourEvents.length}</dd>
+            </div>
+            <div>
+              <dt>Prefs</dt>
+              <dd>{preferences.length}</dd>
+            </div>
+            <div>
+              <dt>Tight walks</dt>
+              <dd className={tightCount ? "hot" : undefined}>{tightCount}</dd>
+            </div>
+            <div>
+              <dt>Week of</dt>
+              <dd className="mono">{weekStartISO}</dd>
+            </div>
+          </dl>
+        </header>
+
+        <TabBar
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "week", label: "My Week", hint: "Grid" },
+            { id: "preferences", label: "Preferences", hint: "Arrange" },
+            { id: "overlap", label: "Overlap", hint: "Friends" },
+            { id: "walk", label: "Walk", hint: "Campus" },
+            { id: "share", label: "Share", hint: "Link" },
+            { id: "sync", label: "Sync", hint: "Google" },
+          ]}
         />
-      ) : null}
-    </main>
+
+        <div className="view-banner" key={tab}>
+          <p className="kicker">Active module</p>
+          <h2>{meta.title}</h2>
+          <p className="subtitle">{meta.blurb}</p>
+        </div>
+
+        {tab === "week" && (
+          <div className="stack">
+            <Section kicker="01 / Calendar" title="This week" subtitle={meta.blurb}>
+              <WeekCalendar
+                events={events}
+                personId={YOU_ID}
+                weekStart={weekStartISO}
+                cues={cues}
+                onEventClick={setSelected}
+              />
+            </Section>
+            <SyllabusIntake />
+          </div>
+        )}
+
+        {tab === "preferences" && <PreferencesPanel />}
+        {tab === "overlap" && <OverlapView />}
+        {tab === "walk" && <WalkAlerts />}
+        {tab === "share" && <SharePanel />}
+        {tab === "sync" && <SyncPanel />}
+
+        {selected ? (
+          <EventModal
+            event={selected}
+            onClose={() => setSelected(null)}
+            onSave={(e) => {
+              upsertEvent(e);
+              setSelected(null);
+            }}
+            onDelete={(id) => {
+              removeEvent(id);
+              setSelected(null);
+            }}
+            onPin={(id) => {
+              pinEvent(id);
+              setSelected(null);
+            }}
+          />
+        ) : null}
+      </main>
+    </div>
   );
 }

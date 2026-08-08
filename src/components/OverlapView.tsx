@@ -41,8 +41,9 @@ export default function OverlapView() {
   return (
     <div className="stack">
       <Section
+        kicker="Overlap / Alex"
         title="Friend overlap"
-        subtitle="Green cells are times you and Alex are both free. Preference blocks count as busy unless you toggle them free."
+        subtitle="Volt cells are times you and Alex are both free. Preference blocks count as busy unless you toggle them free."
         actions={
           <Button
             variant={prefsAsFree ? "primary" : "secondary"}

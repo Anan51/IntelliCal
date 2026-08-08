@@ -1,28 +1,34 @@
 import type { Metadata } from "next";
-import { Fraunces, Figtree } from "next/font/google";
+import { IBM_Plex_Mono, Sora, Syne } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
+const display = Syne({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["500", "600", "700"],
+  weight: ["600", "700", "800"],
 });
 
-const sans = Figtree({
+const sans = Sora({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
 });
 
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
-  title: "IntelliCal",
+  title: "IntelliCal — order from chaos",
   description:
-    "Intelligent university calendar: syllabus intake, preference arrangement, walk times, and friend free-time overlap.",
+    "University calendar that ingests syllabi, protects your preferences, counts campus walks, and finds friend overlap.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable}`}>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );
