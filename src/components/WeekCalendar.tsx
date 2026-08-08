@@ -19,6 +19,13 @@ const KIND_COLORS: Record<CalEvent["kind"], string> = {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
+type BlockTone = "class" | "soft" | "hard";
+
+function getTone(event: CalEvent): BlockTone {
+  if (!event.preferenceId) return "class";
+  return (event.strength ?? "hard") === "soft" ? "soft" : "hard";
+}
+
 function getWeekDays(weekStart: string) {
   const [y, m, d] = weekStart.split("-").map(Number);
   return DAY_NAMES.map((label, i) => {
@@ -39,39 +46,138 @@ function formatHourSuffix(h: number): string {
   return h >= 12 ? "PM" : "AM";
 }
 
+function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 function displayTitle(event: CalEvent, hidePrefLabels: boolean): string {
   if (hidePrefLabels && event.preferenceId) return "Busy";
   return event.title;
 }
 
-function eventStyle(event: CalEvent): CSSProperties {
+function gridPosition(event: CalEvent): CSSProperties {
   const start = new Date(event.start);
   const end = new Date(event.end);
   const startMin = start.getHours() * 60 + start.getMinutes();
   const endMin = end.getHours() * 60 + end.getMinutes();
   const top = ((startMin - HOUR_START * 60) / 60) * HOUR_HEIGHT;
-  const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT - 2, 20);
+  const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT - 3, 22);
+  return { top, height };
+}
 
-  const soft = (event.strength ?? "hard") === "soft";
-  const hardPref = Boolean(event.preferenceId) && !soft;
-
-  if (soft) {
-    return { top, height, color: "#c5d4ff" };
+/** Shared visual language for calendar blocks — Cron/Notion restraint */
+function blockClasses(tone: BlockTone, kind: CalEvent["kind"]): string {
+  if (tone === "soft") {
+    return cn(
+      "cal-block cal-block-soft",
+      "bg-[rgba(91,140,255,0.1)] text-[#b8c9f0]",
+      "border border-[rgba(91,140,255,0.22)]"
+    );
   }
-  if (hardPref) {
+  if (tone === "hard") {
+    return cn(
+      "cal-block cal-block-hard",
+      "bg-[rgba(255,255,255,0.04)] text-[#aeb8cc]",
+      "border border-[rgba(255,255,255,0.08)]"
+    );
+  }
+  return cn("cal-block cal-block-class text-white border border-transparent");
+}
+
+function blockInlineStyle(tone: BlockTone, kind: CalEvent["kind"]): CSSProperties {
+  if (tone === "class") {
     return {
-      top,
-      height,
-      backgroundColor: "var(--pref-hard-fill)",
-      color: "#c8d0e0",
+      background: KIND_COLORS[kind],
+      boxShadow: `inset 2px 0 0 rgba(255,255,255,0.35)`,
     };
   }
-  return {
-    top,
-    height,
-    background: KIND_COLORS[event.kind] ?? "var(--other)",
-    color: "white",
-  };
+  if (tone === "soft") {
+    return { boxShadow: `inset 2px 0 0 rgba(91,140,255,0.7)` };
+  }
+  return { boxShadow: `inset 2px 0 0 rgba(148,163,184,0.55)` };
+}
+
+function EventBlock({
+  event,
+  hidePrefLabels,
+  compact,
+  onClick,
+  style,
+  className,
+}: {
+  event: CalEvent;
+  hidePrefLabels: boolean;
+  compact?: boolean;
+  onClick?: () => void;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  const tone = getTone(event);
+  const title = displayTitle(event, hidePrefLabels);
+  const clickable = Boolean(onClick);
+  const meta = [
+    formatClock(event.start),
+    !compact ? `– ${formatClock(event.end)}` : null,
+    event.building && !hidePrefLabels ? event.building : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const strengthHint =
+    !hidePrefLabels && tone !== "class" ? (tone === "soft" ? "Soft" : "Hard") : null;
+
+  return (
+    <button
+      type="button"
+      disabled={!clickable}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      className={cn(
+        "overflow-hidden rounded-[3px] text-left transition-[filter,background-color]",
+        blockClasses(tone, event.kind),
+        clickable ? "cursor-pointer hover:brightness-110" : "cursor-default",
+        className
+      )}
+      style={{ ...blockInlineStyle(tone, event.kind), ...style }}
+      title={[title, strengthHint, meta].filter(Boolean).join(" · ")}
+      aria-label={[title, strengthHint ? `${strengthHint} preference` : null, meta]
+        .filter(Boolean)
+        .join(", ")}
+    >
+      <div className={cn("min-w-0", compact ? "px-1.5 py-1" : "px-2.5 py-2")}>
+        <div className="flex items-start justify-between gap-2">
+          <div
+            className={cn(
+              "truncate font-medium tracking-[-0.01em]",
+              compact ? "text-[11px] leading-tight" : "text-[13px] leading-snug"
+            )}
+          >
+            {title}
+          </div>
+          {strengthHint && (
+            <span
+              className={cn(
+                "shrink-0 uppercase tracking-[0.08em] text-[9px] font-medium opacity-55",
+                compact && "mt-0.5"
+              )}
+            >
+              {strengthHint}
+            </span>
+          )}
+        </div>
+        <div
+          className={cn(
+            "truncate tabular opacity-70",
+            compact ? "mt-0.5 text-[10px] leading-none" : "mt-0.5 text-[11px]"
+          )}
+        >
+          {meta}
+        </div>
+      </div>
+    </button>
+  );
 }
 
 type Props = {
@@ -120,11 +226,11 @@ export default function WeekCalendar({
 
   return (
     <div>
-      {/* Desktop — Cron-like dense week grid */}
-      <div className="hidden overflow-hidden rounded-lg border border-[var(--hairline)] bg-[var(--surface)] md:block">
+      {/* Desktop grid */}
+      <div className="hidden overflow-hidden rounded-md border border-[var(--hairline)] bg-[var(--surface)] md:block">
         <div
           className="grid"
-          style={{ gridTemplateColumns: "56px repeat(5, minmax(0, 1fr))" }}
+          style={{ gridTemplateColumns: "52px repeat(5, minmax(0, 1fr))" }}
           role="grid"
           aria-label="Week calendar Monday through Friday, 8 AM to 9 PM"
         >
@@ -132,13 +238,13 @@ export default function WeekCalendar({
           {days.map((d) => (
             <div
               key={d.iso}
-              className="border-b border-l border-[var(--hairline)] px-2 py-2.5 text-center"
+              className="border-b border-l border-[var(--hairline)] px-2 py-2 text-center"
               role="columnheader"
             >
-              <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 {d.label}
               </div>
-              <div className="mt-0.5 text-[13px] font-medium tabular text-foreground">
+              <div className="mt-0.5 text-[12px] font-medium tabular text-foreground/90">
                 {d.date}
               </div>
             </div>
@@ -157,9 +263,9 @@ export default function WeekCalendar({
                 className="flex items-start justify-end border-b border-[var(--hairline)] pr-2 pt-1"
                 style={{ height: HOUR_HEIGHT }}
               >
-                <span className="tabular text-[10px] text-muted-foreground/80">
+                <span className="tabular text-[10px] text-muted-foreground/75">
                   {formatHour(h)}
-                  <span className="ml-0.5 text-[9px] opacity-70">{formatHourSuffix(h)}</span>
+                  <span className="ml-0.5 text-[8px] opacity-60">{formatHourSuffix(h)}</span>
                 </span>
               </div>
             ))}
@@ -207,116 +313,73 @@ export default function WeekCalendar({
                 />
               ))}
 
-              {eventsForDay(d.iso).map((ev) => {
-                const soft = (ev.strength ?? "hard") === "soft";
-                const hardPref = Boolean(ev.preferenceId) && !soft;
-                const clickable = Boolean(onEventClick && ev.preferenceId);
-                return (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    disabled={!clickable}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (clickable) onEventClick?.(ev);
-                    }}
-                    className={cn(
-                      "absolute left-1 right-1 z-[2] overflow-hidden rounded px-1.5 py-1 text-left text-[11px] leading-tight transition-opacity",
-                      soft && "pref-hatch border border-dashed border-[var(--pref-soft-border)]",
-                      hardPref && "border border-white/10",
-                      !soft && !hardPref && "shadow-[inset_3px_0_0_rgba(255,255,255,0.25)]",
-                      clickable ? "cursor-pointer hover:opacity-90" : "cursor-default"
-                    )}
-                    style={eventStyle(ev)}
-                    title={`${displayTitle(ev, hidePreferenceLabels)}${
-                      soft ? " · soft" : hardPref ? " · hard" : ""
-                    }`}
-                    aria-label={`${displayTitle(ev, hidePreferenceLabels)}${
-                      soft ? ", soft preference" : hardPref ? ", hard preference" : ""
-                    }`}
-                  >
-                    <div className="truncate font-medium">
-                      {displayTitle(ev, hidePreferenceLabels)}
-                    </div>
-                    <div className="mt-0.5 truncate text-[10px] opacity-80 tabular">
-                      {new Date(ev.start).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                      {ev.building && !hidePreferenceLabels ? ` · ${ev.building}` : ""}
-                    </div>
-                  </button>
-                );
-              })}
+              {eventsForDay(d.iso).map((ev) => (
+                <EventBlock
+                  key={ev.id}
+                  event={ev}
+                  hidePrefLabels={hidePreferenceLabels}
+                  compact
+                  onClick={
+                    onEventClick && ev.preferenceId ? () => onEventClick(ev) : undefined
+                  }
+                  className="absolute left-0.5 right-0.5 z-[2]"
+                  style={gridPosition(ev)}
+                />
+              ))}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Mobile agenda */}
-      <div className="space-y-3 md:hidden" aria-label="Week agenda">
+      {/* Mobile — timeline list, not day-cards */}
+      <div className="md:hidden" aria-label="Week agenda">
         {days.map((d) => {
           const dayEvents = eventsForDay(d.iso).sort(
             (a, b) => +new Date(a.start) - +new Date(b.start)
           );
           return (
-            <section key={d.iso} className="border-b border-[var(--hairline)] pb-3">
-              <div className="mb-2 flex items-baseline justify-between">
-                <h3 className="text-[13px] font-medium">
-                  {d.label}{" "}
-                  <span className="font-normal text-muted-foreground">{d.date}</span>
+            <section key={d.iso} className="border-b border-[var(--hairline)] py-4 first:pt-0">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="text-[12px] font-medium tracking-[-0.01em]">
+                  <span className="text-foreground">{d.label}</span>
+                  <span className="ml-1.5 text-muted-foreground">{d.date}</span>
                 </h3>
                 {onEmptySlotClick && (
                   <button
                     type="button"
-                    className="text-[11px] text-primary hover:underline"
+                    className="text-[11px] text-muted-foreground transition-colors hover:text-primary"
                     onClick={() => onEmptySlotClick(d.iso, 15)}
                   >
-                    Protect hour
+                    Protect a time
                   </button>
                 )}
               </div>
+
               {dayEvents.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground">Free</p>
+                <p className="pl-[3.25rem] text-[12px] text-muted-foreground/70">Nothing scheduled</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {dayEvents.map((ev) => {
-                    const soft = (ev.strength ?? "hard") === "soft";
-                    const hardPref = Boolean(ev.preferenceId) && !soft;
+                    const start = new Date(ev.start);
+                    const startLabel = start.toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    });
                     return (
-                      <li key={ev.id}>
-                        <button
-                          type="button"
-                          disabled={!onEventClick || !ev.preferenceId}
-                          onClick={() => onEventClick?.(ev)}
-                          className={cn(
-                            "w-full rounded-md px-2.5 py-2 text-left text-[12px]",
-                            soft && "pref-hatch border border-dashed border-[var(--pref-soft-border)]",
-                            hardPref && "bg-[var(--pref-hard-fill)]",
-                            !soft && !hardPref && "text-white"
-                          )}
-                          style={
-                            !soft && !hardPref
-                              ? { background: KIND_COLORS[ev.kind] }
+                      <li key={ev.id} className="grid grid-cols-[3rem_1fr] gap-2">
+                        <div className="pt-2 text-right tabular text-[11px] text-muted-foreground">
+                          {startLabel}
+                        </div>
+                        <EventBlock
+                          event={ev}
+                          hidePrefLabels={hidePreferenceLabels}
+                          onClick={
+                            onEventClick && ev.preferenceId
+                              ? () => onEventClick(ev)
                               : undefined
                           }
-                        >
-                          <div className="font-medium">
-                            {displayTitle(ev, hidePreferenceLabels)}
-                            {soft ? " · soft" : hardPref ? " · hard" : ""}
-                          </div>
-                          <div className="mt-0.5 tabular opacity-85">
-                            {new Date(ev.start).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                            {" – "}
-                            {new Date(ev.end).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                        </button>
+                          className="w-full"
+                        />
                       </li>
                     );
                   })}
@@ -328,25 +391,33 @@ export default function WeekCalendar({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px]" style={{ background: KIND_COLORS.lecture }} />
-          Class
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] border border-dashed border-[var(--pref-soft-border)] bg-[var(--pref-soft-fill)]" />
-          Soft pref
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] bg-[var(--pref-hard-fill)]" />
-          Hard pref
-        </span>
+        <LegendPip tone="class" label="Class" />
+        <LegendPip tone="soft" label="Soft preference" />
+        <LegendPip tone="hard" label="Hard preference" />
         {showOverlap && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-[2px] bg-[var(--green-dim)] ring-1 ring-[var(--green)]/40" />
+            <span className="size-2 rounded-[2px] bg-[rgba(62,207,142,0.25)]" aria-hidden />
             Both free
           </span>
         )}
       </div>
     </div>
+  );
+}
+
+function LegendPip({ tone, label }: { tone: BlockTone; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={cn(
+          "size-2 rounded-[2px]",
+          tone === "class" && "bg-[var(--lecture)]",
+          tone === "soft" && "bg-[rgba(91,140,255,0.35)] ring-1 ring-[rgba(91,140,255,0.5)]",
+          tone === "hard" && "bg-[rgba(255,255,255,0.12)] ring-1 ring-white/15"
+        )}
+        aria-hidden
+      />
+      {label}
+    </span>
   );
 }
