@@ -15,8 +15,14 @@ export function walkBetween(a?: string, b?: string): number | null {
 }
 
 export function tightTransitions(events: CalEvent[], personId: string): WalkWarning[] {
+  // Soft preferences don't create walk alerts — only hard/class events with buildings
   const mine = events
-    .filter((e) => e.personId === personId)
+    .filter(
+      (e) =>
+        e.personId === personId &&
+        (e.strength ?? "hard") === "hard" &&
+        !e.preferenceId
+    )
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
   const warnings: WalkWarning[] = [];
   for (let i = 0; i < mine.length - 1; i++) {

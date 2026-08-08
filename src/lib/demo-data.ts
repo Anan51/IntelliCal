@@ -1,4 +1,5 @@
 import type { CalEvent, Person } from "./types";
+import { TIMEZONE } from "./types";
 
 export const people: Person[] = [
   { id: "you", name: "You" },
@@ -7,6 +8,12 @@ export const people: Person[] = [
 
 /** Demo week: Mon 2026-09-28 (UCLA-ish fall vibe) */
 export const DEMO_WEEK_START = "2026-09-28";
+
+const hard = {
+  source: "syllabus" as const,
+  strength: "hard" as const,
+  timezone: TIMEZONE,
+};
 
 export const demoEvents: CalEvent[] = [
   {
@@ -17,6 +24,7 @@ export const demoEvents: CalEvent[] = [
     building: "Boelter",
     kind: "lecture",
     personId: "you",
+    ...hard,
   },
   {
     id: "cs31-lec-wed",
@@ -26,6 +34,7 @@ export const demoEvents: CalEvent[] = [
     building: "Boelter",
     kind: "lecture",
     personId: "you",
+    ...hard,
   },
   {
     id: "cs31-disc-fri",
@@ -35,6 +44,7 @@ export const demoEvents: CalEvent[] = [
     building: "Boelter",
     kind: "discussion",
     personId: "you",
+    ...hard,
   },
   {
     id: "ge-tue",
@@ -44,6 +54,7 @@ export const demoEvents: CalEvent[] = [
     building: "Bunche",
     kind: "lecture",
     personId: "you",
+    ...hard,
   },
   {
     id: "ge-thu",
@@ -53,6 +64,7 @@ export const demoEvents: CalEvent[] = [
     building: "Bunche",
     kind: "lecture",
     personId: "you",
+    ...hard,
   },
   {
     id: "oh-wed",
@@ -62,23 +74,11 @@ export const demoEvents: CalEvent[] = [
     building: "Bunche",
     kind: "other",
     personId: "you",
+    source: "manual",
+    strength: "hard",
+    timezone: TIMEZONE,
   },
-  {
-    id: "gym-mon",
-    title: "Gym",
-    start: "2026-09-28T18:00:00",
-    end: "2026-09-28T19:00:00",
-    kind: "busy",
-    personId: "you",
-  },
-  {
-    id: "gym-wed",
-    title: "Gym",
-    start: "2026-09-30T18:00:00",
-    end: "2026-09-30T19:00:00",
-    kind: "busy",
-    personId: "you",
-  },
+  // Gym for "you" moved to soft Preference (see preferences.ts defaults)
   {
     id: "alex-busy-tue",
     title: "Alex — Econ Lecture",
@@ -86,6 +86,9 @@ export const demoEvents: CalEvent[] = [
     end: "2026-09-29T11:00:00",
     kind: "lecture",
     personId: "alex",
+    source: "manual",
+    strength: "hard",
+    timezone: TIMEZONE,
   },
   {
     id: "alex-busy-thu",
@@ -94,6 +97,9 @@ export const demoEvents: CalEvent[] = [
     end: "2026-10-01T16:00:00",
     kind: "lecture",
     personId: "alex",
+    source: "manual",
+    strength: "hard",
+    timezone: TIMEZONE,
   },
   {
     id: "alex-gym-mon",
@@ -102,6 +108,9 @@ export const demoEvents: CalEvent[] = [
     end: "2026-09-28T18:30:00",
     kind: "busy",
     personId: "alex",
+    source: "manual",
+    strength: "hard",
+    timezone: TIMEZONE,
   },
 ];
 
