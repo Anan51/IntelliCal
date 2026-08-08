@@ -1,130 +1,217 @@
-import type { CalEvent } from "./types";
-import { DEMO_WEEK_START } from "./demo-data";
+import { newId } from "./id";
+import { resolveLocation } from "./resolveLocation";
+import { expandEvent, weeklyRRule } from "./recurrence";
+import type { CalEvent, EventKind, ParsedEvent } from "./types";
+import { addDaysISO, normalizeHHMM, parseISODate, formatISODate } from "./time";
 
-const DAY_OFFSET: Record<string, number> = {
-  mon: 0,
-  tue: 1,
-  wed: 2,
-  thu: 3,
-  fri: 4,
-  sat: 5,
-  sun: 6,
+const DAY_TOKEN: Record<string, number> = {
+  su: 0,
+  sun: 0,
+  sunday: 0,
+  m: 1,
+  mo: 1,
+  mon: 1,
+  monday: 1,
+  t: 2,
+  tu: 2,
+  tue: 2,
+  tues: 2,
+  tuesday: 2,
+  w: 3,
+  we: 3,
+  wed: 3,
+  wednesday: 3,
+  th: 4,
+  thu: 4,
+  thur: 4,
+  thurs: 4,
+  thursday: 4,
+  f: 5,
+  fr: 5,
+  fri: 5,
+  friday: 5,
+  sa: 6,
+  sat: 6,
+  saturday: 6,
 };
 
-function addDays(isoDate: string, days: number): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
+function parseDayList(raw: string): number[] {
+  // Supports "Mon/Wed", "MWF", "TTh", "Mon, Wed, Fri"
+  const compact = raw.replace(/[^A-Za-z]/g, "");
+  if (/^(MWF|MW|MF|TR|TTh|MWF|MTWRF)$/i.test(compact)) {
+    const map: Record<string, number[]> = {
+      mwf: [1, 3, 5],
+      mw: [1, 3],
+      mf: [1, 5],
+      tr: [2, 4],
+      tth: [2, 4],
+      mtwrf: [1, 2, 3, 4, 5],
+    };
+    return map[compact.toLowerCase()] ?? [];
+  }
+
+  const parts = raw.split(/[/,&\s]+/).filter(Boolean);
+  const days: number[] = [];
+  for (const p of parts) {
+    const key = p.toLowerCase().slice(0, 3);
+    const d = DAY_TOKEN[key] ?? DAY_TOKEN[p.toLowerCase()];
+    if (d !== undefined && !days.includes(d)) days.push(d);
+  }
+  return days;
 }
 
-function normalizeTime(t: string): string {
-  const [h, m] = t.split(":");
-  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
-}
-
-function parseDays(dayStr: string): number[] {
-  const parts = dayStr.split(/[/,&\s]+/).filter(Boolean);
-  return parts
-    .map((p) => DAY_OFFSET[p.toLowerCase().slice(0, 3)])
-    .filter((n) => n !== undefined);
-}
-
-function parseDate(dateStr: string): string {
+function parseDate(dateStr: string, fallbackYear = 2026): string {
   const m = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-  if (!m) return "2026-10-30";
+  if (!m) return `${fallbackYear}-10-30`;
   const year = m[3].length === 2 ? `20${m[3]}` : m[3];
   return `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
 }
 
-/** Heuristic parser for hackathon demo. Replace with LLM later if key exists. */
-export function parseSyllabus(text: string, personId = "you"): CalEvent[] {
-  const events: CalEvent[] = [];
+function courseTitle(text: string): string {
+  const m = text.match(/^([A-Z]{2,4}\s*\d{1,3}[A-Z]?)\b/m);
+  return m?.[1]?.replace(/\s+/, " ") ?? "Course";
+}
+
+function firstWeekDateForDay(weekStartISO: string, day: number): string {
+  // weekStartISO is Monday
+  const monday = parseISODate(weekStartISO);
+  const mondayDow = monday.getDay();
+  const offsetToMonday = mondayDow === 1 ? 0 : mondayDow === 0 ? -6 : 1 - mondayDow;
+  const base = new Date(monday);
+  base.setDate(base.getDate() + offsetToMonday);
+  const targetOffset = day === 0 ? 6 : day - 1;
+  base.setDate(base.getDate() + targetOffset);
+  return formatISODate(base);
+}
+
+export type ParseSyllabusOptions = {
+  weekStartISO: string;
+  termEndISO?: string;
+};
+
+/**
+ * Heuristic syllabus parser. Returns draft ParsedEvents with confidence scores.
+ * Never auto-commits — caller must show a review UI.
+ */
+export function parseSyllabus(
+  text: string,
+  options: ParseSyllabusOptions
+): ParsedEvent[] {
+  const title = courseTitle(text);
+  const drafts: ParsedEvent[] = [];
   const lines = text.split(/\r?\n/);
-  let i = 0;
 
   for (const line of lines) {
-    const lecture = line.match(
-      /Lecture[:\s]+((?:Mon|Tue|Wed|Thu|Fri)[\w/,&\s]*?)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}).*?(Boelter|Bunche|Royce|Powell)?/i
+    const meeting = line.match(
+      /(Lecture|Discussion|Section|Lab)[:\s]+([A-Za-z][\w/,&\s]*?)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})(?:\s+(.+))?/i
     );
-    const discussion = line.match(
-      /Discussion[:\s]+((?:Mon|Tue|Wed|Thu|Fri)[\w/,&\s]*?)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}).*?(Boelter|Bunche|Royce|Powell)?/i
-    );
-    const midterm = line.match(
-      /Midterm[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4}).*?(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i
-    );
-    const finalExam = line.match(
-      /Final[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4}).*?(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i
-    );
+    if (meeting) {
+      const kindRaw = meeting[1].toLowerCase();
+      const kind: EventKind =
+        kindRaw === "lecture"
+          ? "lecture"
+          : kindRaw === "discussion" || kindRaw === "section"
+            ? "discussion"
+            : "other";
+      const days = parseDayList(meeting[2]);
+      const startT = normalizeHHMM(meeting[3]);
+      const endT = normalizeHHMM(meeting[4]);
+      const locRaw = meeting[5]?.trim().replace(/\s+/g, " ");
+      const location = locRaw ? resolveLocation(locRaw) : undefined;
+      if (days.length === 0) continue;
 
-    if (lecture) {
-      const days = parseDays(lecture[1]);
-      const startT = normalizeTime(lecture[2]);
-      const endT = normalizeTime(lecture[3]);
-      const building = lecture[4];
-      for (const offset of days) {
-        i += 1;
-        const date = addDays(DEMO_WEEK_START, offset);
-        events.push({
-          id: `parsed-lec-${i}-${offset}`,
-          title: "CS 31 Lecture",
-          start: `${date}T${startT}:00`,
-          end: `${date}T${endT}:00`,
-          building,
-          kind: "lecture",
-          personId,
-        });
-      }
-    }
-
-    if (discussion) {
-      const days = parseDays(discussion[1]);
-      const startT = normalizeTime(discussion[2]);
-      const endT = normalizeTime(discussion[3]);
-      const building = discussion[4];
-      for (const offset of days) {
-        i += 1;
-        const date = addDays(DEMO_WEEK_START, offset);
-        events.push({
-          id: `parsed-disc-${i}-${offset}`,
-          title: "CS 31 Discussion",
-          start: `${date}T${startT}:00`,
-          end: `${date}T${endT}:00`,
-          building,
-          kind: "discussion",
-          personId,
-        });
-      }
-    }
-
-    if (midterm) {
-      i += 1;
-      const date = parseDate(midterm[1]);
-      events.push({
-        id: `parsed-exam-${i}`,
-        title: "Midterm",
-        start: `${date}T${normalizeTime(midterm[2])}:00`,
-        end: `${date}T${normalizeTime(midterm[3])}:00`,
-        kind: "exam",
-        personId,
+      const firstDay = firstWeekDateForDay(options.weekStartISO, days[0]);
+      drafts.push({
+        draftId: newId("draft"),
+        title: `${title} ${meeting[1]}`,
+        start: `${firstDay}T${startT}:00`,
+        end: `${firstDay}T${endT}:00`,
+        kind,
+        location,
+        recurrence: weeklyRRule(days, options.termEndISO),
+        confidence: {
+          title: 0.7,
+          start: 0.9,
+          end: 0.9,
+          kind: 0.95,
+          location: location?.building ? 0.85 : 0.4,
+        },
       });
+      continue;
     }
 
-    if (finalExam) {
-      i += 1;
-      const date = parseDate(finalExam[1]);
-      events.push({
-        id: `parsed-final-${i}`,
-        title: "Final Exam",
-        start: `${date}T${normalizeTime(finalExam[2])}:00`,
-        end: `${date}T${normalizeTime(finalExam[3])}:00`,
+    const exam = line.match(
+      /(Midterm|Final(?:\s*Exam)?|Exam)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4}).*?(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i
+    );
+    if (exam) {
+      const date = parseDate(exam[2]);
+      const label = /final/i.test(exam[1]) ? "Final Exam" : /midterm/i.test(exam[1]) ? "Midterm" : "Exam";
+      drafts.push({
+        draftId: newId("draft"),
+        title: `${title} ${label}`,
+        start: `${date}T${normalizeHHMM(exam[3])}:00`,
+        end: `${date}T${normalizeHHMM(exam[4])}:00`,
         kind: "exam",
-        personId,
+        confidence: {
+          title: 0.8,
+          start: 0.9,
+          end: 0.9,
+          kind: 0.95,
+          location: 0.2,
+        },
+      });
+      continue;
+    }
+
+    const due = line.match(
+      /(Due|Deadline|Assignment|Problem Set|Essay|Project)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:.*?(\d{1,2}:\d{2}))?/i
+    );
+    if (due) {
+      const date = parseDate(due[2]);
+      const time = due[3] ? normalizeHHMM(due[3]) : "23:59";
+      drafts.push({
+        draftId: newId("draft"),
+        title: `${title} ${due[1]}`,
+        start: `${date}T${time}:00`,
+        end: `${date}T${time}:00`,
+        kind: "due_date",
+        confidence: {
+          title: 0.6,
+          start: 0.75,
+          end: 0.75,
+          kind: 0.8,
+          location: 0.1,
+        },
       });
     }
   }
 
-  return events;
+  return drafts;
+}
+
+/** Expand recurring drafts into concrete week events for calendar merge preview. */
+export function materializeParsedWeek(
+  drafts: ParsedEvent[],
+  weekStartISO: string,
+  personId: string
+): CalEvent[] {
+  const rangeStart = parseISODate(weekStartISO);
+  const rangeEnd = parseISODate(addDaysISO(weekStartISO, 7));
+  const now = new Date().toISOString();
+
+  return drafts.flatMap((d) => {
+    const base: CalEvent = {
+      id: d.draftId,
+      personId,
+      title: d.title,
+      start: d.start,
+      end: d.end,
+      kind: d.kind,
+      location: d.location,
+      recurrence: d.recurrence,
+      source: "syllabus",
+      updatedAt: now,
+    };
+    return expandEvent(base, rangeStart, rangeEnd);
+  });
 }

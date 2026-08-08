@@ -1,41 +1,74 @@
-import type { WalkWarning } from "@/lib/walkTimes";
+"use client";
 
-type Props = {
-  warnings: WalkWarning[];
-};
+import { formatTimeLabel } from "@/lib/time";
+import { allTransitionCues } from "@/lib/walkTimes";
+import { YOU_ID, useCalendarStore } from "@/store/calendarStore";
+import { Badge, Empty, Section } from "./ui";
 
-export default function WalkAlerts({ warnings }: Props) {
+export default function WalkAlerts() {
+  const events = useCalendarStore((s) => s.events);
+  const people = useCalendarStore((s) => s.people);
+  const you = people.find((p) => p.id === YOU_ID);
+
+  const cues = allTransitionCues(
+    events,
+    YOU_ID,
+    you?.travelMode ?? "walk",
+    you?.homeLat != null && you.homeLng != null
+      ? { lat: you.homeLat, lng: you.homeLng, raw: you.homeAddress }
+      : undefined
+  );
+  const tight = cues.filter((c) => c.tight);
+
   return (
-    <div>
-      <div className="section-card">
-        <h2>Tight walk transitions</h2>
-        <p className="subtitle">
-          Flags back-to-back classes where the gap is shorter than UCLA walk time + 2 min buffer (Boelter ↔ Bunche = 12 min).
-        </p>
-        {warnings.length === 0 ? (
-          <p className="empty-state">No tight walks in your current schedule. Nice!</p>
+    <div className="stack">
+      <Section
+        title="Campus travel"
+        subtitle="Leave-by cues use building walk times plus a 5-minute buffer."
+      >
+        {cues.length === 0 ? (
+          <Empty>No transitions that need travel time.</Empty>
         ) : (
           <ul className="walk-list">
-            {warnings.map((w, i) => (
-              <li key={i} className="walk-card">
-                <h3>⚠ Tight transition</h3>
-                <p>{w.message}</p>
+            {cues.map((c) => (
+              <li key={`${c.fromEventId}-${c.toEventId}`} className={`walk-card${c.tight ? " tight" : ""}`}>
+                <div className="walk-card-top">
+                  <h3>
+                    {c.fromLabel} → {c.toLabel}
+                  </h3>
+                  {c.tight ? <Badge tone="warn">Tight</Badge> : <Badge tone="good">OK</Badge>}
+                </div>
+                <p>
+                  Leave by <strong>{formatTimeLabel(c.leaveBy)}</strong>
+                  {c.approximate ? " (estimate)" : ""}.
+                </p>
                 <div className="stats">
                   <span className="walk-stat">
-                    Gap: <strong>{w.gapMin} min</strong>
+                    Gap: <strong>{c.gapMin} min</strong>
                   </span>
                   <span className="walk-stat">
-                    Walk: <strong>{w.walkMin} min</strong>
+                    Travel: <strong>{c.travelMin} min</strong>
                   </span>
                   <span className="walk-stat">
-                    Need: <strong>{w.walkMin + 2} min</strong>
+                    Need: <strong>{c.travelMin + 5} min</strong>
                   </span>
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Section>
+
+      <Section title={`Tight transitions (${tight.length})`}>
+        {tight.length === 0 ? (
+          <Empty>No tight walks in your current schedule.</Empty>
+        ) : (
+          <p className="muted">
+            {tight.length} transition{tight.length === 1 ? "" : "s"} where the gap is shorter than
+            travel time plus buffer.
+          </p>
+        )}
+      </Section>
     </div>
   );
 }

@@ -1,0 +1,7 @@
+CS 31 - Introduction to Computer Science I
+Instructor: Sample Prof
+Lecture: Mon/Wed 10:00-11:50 Boelter 3400
+Discussion: Fri 12:00-12:50 Boelter 5249
+Midterm: 10/30/2026 10:00-11:50
+Final: 12/10/2026 15:00-18:00
+Problem Set: 10/15/2026 23:59
