@@ -4,59 +4,65 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Night library — deep navy/ink, electric blue, soft gold, mint overlap */
+/*
+  Night library — Cron/Notion Calendar restraint
+  Near-black canvas, hairline grids, electric blue accent only when needed.
+*/
 :root {
-  --bg: #0b1020;
-  --surface: #151b2e;
-  --surface-2: #1c2438;
-  --text: #e8eeff;
-  --accent-bright: #60a5fa;
-  --green: #34d399;
-  --green-dim: rgba(52, 211, 153, 0.22);
-  --warn: #f0c674;
-  --warn-bg: rgba(240, 198, 116, 0.12);
-  --lecture: #3b82f6;
-  --discussion: #818cf8;
-  --exam: #f87171;
-  --busy: #64748b;
-  --other: #22d3ee;
-  --alex: #f472b6;
-  --pref-soft: rgba(96, 165, 250, 0.22);
-  --pref-hard: #475569;
-  --radius: 0.625rem;
+  --bg: #07090f;
+  --surface: #0d111a;
+  --surface-2: #121826;
+  --elevated: #161d2e;
+  --text: #eef2ff;
+  --text-secondary: #9aa6c2;
+  --hairline: rgba(255, 255, 255, 0.06);
+  --hairline-strong: rgba(255, 255, 255, 0.1);
+  --accent-bright: #5b8cff;
+  --green: #3ecf8e;
+  --green-dim: rgba(62, 207, 142, 0.14);
+  --warn: #e8b86d;
+  --warn-bg: rgba(232, 184, 109, 0.1);
+  --lecture: #4f7cff;
+  --discussion: #6b8afe;
+  --exam: #e57373;
+  --busy: #5a6478;
+  --other: #4db8c9;
+  --pref-soft-fill: rgba(91, 140, 255, 0.12);
+  --pref-soft-border: rgba(91, 140, 255, 0.45);
+  --pref-hard-fill: #2a3142;
+  --radius: 0.5rem;
 
-  /* shadcn tokens mapped to Night library */
-  --background: #0b1020;
-  --foreground: #e8eeff;
-  --card: #151b2e;
-  --card-foreground: #e8eeff;
-  --popover: #151b2e;
-  --popover-foreground: #e8eeff;
-  --primary: #3b82f6;
+  --background: #07090f;
+  --foreground: #eef2ff;
+  --card: #0d111a;
+  --card-foreground: #eef2ff;
+  --popover: #121826;
+  --popover-foreground: #eef2ff;
+  --primary: #5b8cff;
   --primary-foreground: #f8fafc;
-  --secondary: #1c2438;
-  --secondary-foreground: #e8eeff;
-  --muted: #1c2438;
-  --muted-foreground: #8b9cc7;
-  --accent: #1c2438;
-  --accent-foreground: #e8eeff;
-  --destructive: #ef4444;
-  --border: #2a3550;
-  --input: #2a3550;
-  --ring: #3b82f6;
-  --chart-1: #3b82f6;
-  --chart-2: #34d399;
-  --chart-3: #f0c674;
-  --chart-4: #818cf8;
-  --chart-5: #22d3ee;
-  --sidebar: #151b2e;
-  --sidebar-foreground: #e8eeff;
-  --sidebar-primary: #3b82f6;
+  --secondary: #161d2e;
+  --secondary-foreground: #eef2ff;
+  --muted: #121826;
+  --muted-foreground: #9aa6c2;
+  --accent: #161d2e;
+  --accent-foreground: #eef2ff;
+  --destructive: #e57373;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #5b8cff;
+  --chart-1: #4f7cff;
+  --chart-2: #3ecf8e;
+  --chart-3: #e8b86d;
+  --chart-4: #6b8afe;
+  --chart-5: #4db8c9;
+  --sidebar: #0a0d14;
+  --sidebar-foreground: #eef2ff;
+  --sidebar-primary: #5b8cff;
   --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #1c2438;
-  --sidebar-accent-foreground: #e8eeff;
-  --sidebar-border: #2a3550;
-  --sidebar-ring: #3b82f6;
+  --sidebar-accent: #121826;
+  --sidebar-accent-foreground: #eef2ff;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #5b8cff;
 }
 
 @theme inline {
@@ -78,11 +84,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -95,9 +96,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --font-sans: var(--font-geist-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-geist-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
@@ -114,49 +114,64 @@
   body {
     @apply antialiased bg-background text-foreground;
     margin: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(59, 130, 246, 0.18), transparent),
-      radial-gradient(ellipse 60% 40% at 90% 10%, rgba(240, 198, 116, 0.06), transparent),
-      var(--bg);
+    background: var(--bg);
     color: var(--text);
     min-height: 100vh;
   }
+
+  /* Tabular nums for time gutters */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Soft preference stripe pattern */
-.pref-soft-pattern {
+/* Soft preference hatch — subtle, Cron-like */
+.pref-hatch {
+  background-color: var(--pref-soft-fill);
   background-image: repeating-linear-gradient(
     -45deg,
     transparent,
-    transparent 4px,
-    rgba(96, 165, 250, 0.14) 4px,
-    rgba(96, 165, 250, 0.14) 8px
+    transparent 3px,
+    rgba(91, 140, 255, 0.08) 3px,
+    rgba(91, 140, 255, 0.08) 6px
   );
 }
 
-/* Calendar grid helpers (Tailwind-heavy UI still needs absolute positioning) */
-.cal-event-soft {
-  border: 1.5px dashed rgba(96, 165, 250, 0.65);
-  background-color: var(--pref-soft);
-  color: #bfdbfe;
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.cal-event-hard-pref {
-  background-color: var(--pref-hard);
-  border-left: 3px solid rgba(148, 163, 184, 0.8);
-  color: #e2e8f0;
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(62, 207, 142, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.12);
+  }
 }
 
-.cal-cell-clickable {
-  cursor: pointer;
+.animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
 }
 
-.cal-cell-clickable:hover {
-  background: rgba(59, 130, 246, 0.08);
+.overlap-glow {
+  background: rgba(62, 207, 142, 0.11);
 }
 
-.cal-cell-clickable:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
+.cal-cell-hit:hover {
+  background: rgba(91, 140, 255, 0.06);
+}
+
+.cal-cell-hit:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -1px;
   z-index: 1;
 }

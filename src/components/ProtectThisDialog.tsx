@@ -47,20 +47,20 @@ export default function ProtectThisDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-border bg-[var(--surface)] sm:max-w-md">
+      <DialogContent className="border-[var(--hairline)] bg-[var(--surface)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Protect this time?</DialogTitle>
           <DialogDescription>
-            Creates a soft preference so Balanced overlap treats it as busy. You can harden or
-            edit it later in Preferences.
+            Adds a soft preference. Balanced overlap will treat it as busy — friends see Busy, not
+            the label.
           </DialogDescription>
         </DialogHeader>
         {label && (
-          <p className="rounded-lg border border-border bg-[var(--surface-2)] px-3 py-2 text-sm font-medium">
+          <p className="rounded-md border border-[var(--hairline)] bg-[var(--surface-2)] px-3 py-2 text-[13px] font-medium tabular">
             {label}
           </p>
         )}
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

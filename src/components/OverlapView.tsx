@@ -4,7 +4,6 @@ import type { Slot } from "@/lib/overlap";
 import type { CalEvent, OverlapMode } from "@/lib/types";
 import WeekCalendar from "./WeekCalendar";
 import ModeToggle from "./ModeToggle";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -17,15 +16,10 @@ function formatDay(dayISO: string): string {
   return `${dow} ${date}`;
 }
 
-/** Soft prefs show as generic "Busy" on friend overlap — don't leak labels. */
 function sanitizeForFriendView(events: CalEvent[]): CalEvent[] {
   return events.map((e) => {
     if (!e.preferenceId) return e;
-    return {
-      ...e,
-      title: "Busy",
-      building: undefined,
-    };
+    return { ...e, title: "Busy", building: undefined };
   });
 }
 
@@ -42,63 +36,55 @@ export default function OverlapView({ events, slots, mode, onModeChange }: Props
     return acc;
   }, {});
 
-  const displayEvents = sanitizeForFriendView(events);
-
   return (
-    <div className="space-y-4">
-      <Card className="border-border bg-[var(--surface)]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">You × Alex</CardTitle>
-          <CardDescription>
-            Mint cells = both free (9 AM – 9 PM, 1-hour blocks). Soft prefs count as busy in
-            Balanced — try Max to ignore them.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ModeToggle mode={mode} onChange={onModeChange} />
-          <WeekCalendar
-            events={displayEvents}
-            overlapSlots={slots}
-            showOverlap
-            hidePreferenceLabels
-          />
-        </CardContent>
-      </Card>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Find time with Alex</h1>
+        <p className="mt-1.5 max-w-xl text-[13px] text-muted-foreground">
+          Mint cells are hours you&apos;re both free. Soft preferences show as Busy here — labels
+          stay private.
+        </p>
+      </div>
 
-      <Card className="border-border bg-[var(--surface)]">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Shared free slots ({slots.length})</CardTitle>
-          <CardDescription>
-            No when2meet painting — your classes and prefs already shape this.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {slots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No shared free slots in the demo window for this mode.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {Object.entries(grouped).map(([dayISO, daySlots]) =>
-                daySlots.map((s, idx) => (
-                  <li
-                    key={`${dayISO}-${idx}`}
-                    className="rounded-lg border border-[rgba(52,211,153,0.35)] bg-[rgba(52,211,153,0.12)] px-3.5 py-2.5 text-sm text-emerald-300"
-                  >
-                    <span className="font-semibold text-[var(--green)]">
-                      {formatDay(dayISO)}
-                    </span>
+      <ModeToggle mode={mode} onChange={onModeChange} />
+
+      <WeekCalendar
+        events={sanitizeForFriendView(events)}
+        overlapSlots={slots}
+        showOverlap
+        hidePreferenceLabels
+      />
+
+      <section>
+        <h2 className="mb-2 text-[13px] font-medium">
+          Shared free slots
+          <span className="ml-2 tabular text-muted-foreground">{slots.length}</span>
+        </h2>
+        {slots.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">
+            Nothing open in this mode. Try Max, or loosen a soft pref.
+          </p>
+        ) : (
+          <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(grouped).flatMap(([dayISO, daySlots]) =>
+              daySlots.map((s, idx) => (
+                <li
+                  key={`${dayISO}-${idx}`}
+                  className="rounded-md border border-[rgba(62,207,142,0.25)] bg-[var(--green-dim)] px-3 py-2 text-[12px] text-[var(--green)]"
+                >
+                  <span className="font-medium">{formatDay(dayISO)}</span>
+                  <span className="tabular text-emerald-200/90">
                     {" · "}
                     {s.start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                     {" – "}
                     {s.end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                  </li>
-                ))
-              )}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

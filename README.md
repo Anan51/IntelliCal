@@ -32,14 +32,14 @@ npm start
 
 ## What's built (Phase 1)
 
-- **Night library** design: Tailwind CSS + shadcn/ui, deep navy/ink, electric blue accents, soft gold warnings, mint overlap
-- Mon–Fri week calendar (desktop grid + mobile agenda) with class kinds + soft/hard preference styling
-- **Preferences** tab: gym, downtime, quiet hours, custom; hard|soft; persisted to `localStorage` (`intellical:preferences:v1`)
-- Protect-this on empty My Week slots → soft preference
-- Overlap modes: **strict** | **balanced** (default) | **max** — soft prefs only block in balanced
-- Regex syllabus parser (`src/lib/parseSyllabus.ts`) — client-side, no API keys
-- Friend overlap heatmap vs mock friend Alex (`src/lib/overlap.ts`)
-- Static UCLA walk-time warnings (`src/lib/walkTimes.ts`)
+- **Night library** design inspired by Notion Calendar / Cron: sidebar nav, hairline week grid, tabular time gutters — not a card stack
+- **Preferences** is a first-class screen (sidebar): one-tap templates for Gym, Quiet mornings, Downtime, Focus, Social, Custom; fixed days **or** flexible N×/week; hard/soft; location; localStorage
+- Protect-this on empty My Week hours; click a preference block to edit strength / delete
+- Overlap modes: **strict** | **balanced** (default) | **max**
+- Soft prefs: dashed hatch on owner calendar; friend view shows **Busy** only
+- Mobile agenda fallback; walk alerts inline on My Week + Walks page
+- Regex syllabus parser — client-side, no API keys
+- Demo friend Alex hardcoded (no OAuth)
 
 ## Design notes
 

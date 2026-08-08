@@ -55,30 +55,54 @@ export function preferencesToEvents(
 ): CalEvent[] {
   const events: CalEvent[] = [];
   for (const pref of prefs) {
-    if (!pref.windows?.length) continue;
-    for (const win of pref.windows) {
-      for (const day of win.days) {
-        if (day < 0 || day > 4) continue;
-        const date = addDaysISO(weekStartISO, day);
-        const startT = minutesToHHMM(win.startMin);
-        const endT = minutesToHHMM(win.endMin);
-        events.push({
-          id: `pref-ev-${pref.id}-${day}-${win.startMin}`,
-          title: pref.label,
-          start: `${date}T${startT}:00`,
-          end: `${date}T${endT}:00`,
-          kind: kindForCategory(pref.category),
-          personId,
-          source: "manual",
-          strength: pref.strength,
-          preferenceId: pref.id,
-          timezone: TIMEZONE,
-          building: pref.locationText,
-        });
+    if (pref.windows?.length) {
+      for (const win of pref.windows) {
+        for (const day of win.days) {
+          if (day < 0 || day > 4) continue;
+          events.push(makePrefEvent(pref, weekStartISO, day, win.startMin, win.endMin, personId));
+        }
+      }
+    } else if (pref.flexible) {
+      // Visualize flexible prefs: place duration at start of preferred band on first N weekdays
+      const { timesPerWeek, durationMin, preferredBands } = pref.flexible;
+      const band = preferredBands[0] ?? { startMin: 18 * 60, endMin: 21 * 60 };
+      const n = Math.min(Math.max(timesPerWeek, 1), 5);
+      // Spread across Mon–Fri evenly
+      const dayStep = Math.max(1, Math.floor(5 / n));
+      for (let i = 0; i < n; i++) {
+        const day = Math.min(4, i * dayStep);
+        const endMin = Math.min(band.startMin + durationMin, band.endMin);
+        events.push(
+          makePrefEvent(pref, weekStartISO, day, band.startMin, endMin, personId)
+        );
       }
     }
   }
   return events;
+}
+
+function makePrefEvent(
+  pref: Preference,
+  weekStartISO: string,
+  day: number,
+  startMin: number,
+  endMin: number,
+  personId: string
+): CalEvent {
+  const date = addDaysISO(weekStartISO, day);
+  return {
+    id: `pref-ev-${pref.id}-${day}-${startMin}`,
+    title: pref.label,
+    start: `${date}T${minutesToHHMM(startMin)}:00`,
+    end: `${date}T${minutesToHHMM(endMin)}:00`,
+    kind: kindForCategory(pref.category),
+    personId,
+    source: "manual",
+    strength: pref.strength,
+    preferenceId: pref.id,
+    timezone: TIMEZONE,
+    building: pref.locationText,
+  };
 }
 
 export function loadPreferences(): Preference[] {

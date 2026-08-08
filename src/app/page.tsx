@@ -12,6 +12,7 @@ import {
   preferencesToEvents,
   savePreferences,
 } from "@/lib/preferences";
+import AppShell, { type AppTab } from "@/components/AppShell";
 import WeekCalendar from "@/components/WeekCalendar";
 import SyllabusPaste from "@/components/SyllabusPaste";
 import OverlapView from "@/components/OverlapView";
@@ -19,16 +20,14 @@ import WalkAlerts from "@/components/WalkAlerts";
 import PreferencesPanel from "@/components/PreferencesPanel";
 import ProtectThisDialog from "@/components/ProtectThisDialog";
 import OnboardingChecklist from "@/components/OnboardingChecklist";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import EventPrefSheet from "@/components/EventPrefSheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
-type Tab = "week" | "preferences" | "overlap" | "walk";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [events, setEvents] = useState<CalEvent[]>(demoEvents);
-  const [tab, setTab] = useState<Tab>("week");
+  const [tab, setTab] = useState<AppTab>("week");
   const [preferences, setPreferences] = useState<Preference[]>(DEFAULT_PREFERENCES);
   const [prefsHydrated, setPrefsHydrated] = useState(false);
   const [overlapMode, setOverlapMode] = useState<OverlapMode>("balanced");
@@ -36,6 +35,7 @@ export default function Home() {
   const [protectSlot, setProtectSlot] = useState<{ dayISO: string; hour: number } | null>(
     null
   );
+  const [editingPrefId, setEditingPrefId] = useState<string | null>(null);
 
   useEffect(() => {
     setPreferences(loadPreferences());
@@ -48,32 +48,24 @@ export default function Home() {
   }, [preferences, prefsHydrated]);
 
   const prefEvents = useMemo(() => preferencesToEvents(preferences), [preferences]);
-
   const allEvents = useMemo(() => [...events, ...prefEvents], [events, prefEvents]);
-
   const myWeekEvents = useMemo(
     () => allEvents.filter((e) => e.personId === "you"),
     [allEvents]
   );
-
   const overlapSlots = useMemo(
     () => freeOverlapWeek(allEvents, "you", "alex", { mode: overlapMode }),
     [allEvents, overlapMode]
   );
-
   const warnings = useMemo(() => tightTransitions(events, "you"), [events]);
-
   const hasSyllabusExtras = events.some((e) => e.id.startsWith("parsed-"));
+  const editingPref = preferences.find((p) => p.id === editingPrefId) ?? null;
 
   function handleParsed(parsed: CalEvent[]) {
     setEvents((prev) => {
       const withoutDupes = parsed.filter((p) => !prev.some((e) => e.id === p.id));
       return [...prev, ...withoutDupes];
     });
-  }
-
-  function handlePreferencesChange(next: Preference[]) {
-    setPreferences(next);
   }
 
   function confirmProtect() {
@@ -84,103 +76,88 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-6 sm:mb-8">
-        <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
-          UCLA · Demo week
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          IntelliCal
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          when2meet, but it already knows your classes, preferences, and how long it takes to walk
-          across UCLA.
-        </p>
-      </header>
+    <AppShell
+      tab={tab}
+      onTabChange={setTab}
+      prefCount={preferences.length}
+      walkCount={warnings.length}
+    >
+      {tab === "week" && (
+        <div className="mx-auto max-w-5xl space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">My Week</h1>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Sep 28 – Oct 2 · click an empty hour to protect it
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-prefs"
+                  checked={showPreferences}
+                  onCheckedChange={setShowPreferences}
+                />
+                <Label htmlFor="show-prefs" className="text-[12px] text-muted-foreground">
+                  Show preferences
+                </Label>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setTab("preferences")}
+              >
+                Edit preferences
+              </Button>
+            </div>
+          </div>
 
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab(v as Tab)}
-        className="gap-4"
-      >
-        <TabsList
-          variant="line"
-          className="h-auto w-full flex-wrap justify-start gap-1 border-b border-border bg-transparent p-0"
-          aria-label="Main navigation"
-        >
-          <TabsTrigger value="week" className="px-3 py-2">
-            My Week
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="px-3 py-2">
-            Preferences
-          </TabsTrigger>
-          <TabsTrigger value="overlap" className="px-3 py-2">
-            Friend Overlap
-          </TabsTrigger>
-          <TabsTrigger value="walk" className="px-3 py-2">
-            Walk Alerts
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="week" className="space-y-4 outline-none">
           <OnboardingChecklist
             hasSyllabusExtras={hasSyllabusExtras}
-            hasPreferences={preferences.length > 0}
+            prefCount={preferences.length}
+            walkCount={warnings.length}
             onGoPreferences={() => setTab("preferences")}
           />
 
-          <Card className="border-border bg-[var(--surface)]">
-            <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base">Your week</CardTitle>
-                  <CardDescription>
-                    Demo UCLA schedule — CS 31, GE Cluster, plus your preferences. Click an empty
-                    hour to protect it.
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="show-prefs"
-                    checked={showPreferences}
-                    onCheckedChange={setShowPreferences}
-                  />
-                  <Label htmlFor="show-prefs" className="text-xs text-muted-foreground">
-                    Show preferences
-                  </Label>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <WeekCalendar
-                events={myWeekEvents}
-                personId="you"
-                showPreferences={showPreferences}
-                onEmptySlotClick={(dayISO, hour) => setProtectSlot({ dayISO, hour })}
-              />
-            </CardContent>
-          </Card>
+          {warnings.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setTab("walk")}
+              className="w-full rounded-md border border-[rgba(232,184,109,0.25)] bg-[var(--warn-bg)] px-3 py-2 text-left text-[12px] text-[var(--warn)] transition-colors hover:border-[rgba(232,184,109,0.4)]"
+            >
+              {warnings[0].message}
+              {warnings.length > 1 ? ` · +${warnings.length - 1} more` : ""} →
+            </button>
+          )}
+
+          <WeekCalendar
+            events={myWeekEvents}
+            personId="you"
+            showPreferences={showPreferences}
+            onEmptySlotClick={(dayISO, hour) => setProtectSlot({ dayISO, hour })}
+            onEventClick={(ev) => {
+              if (ev.preferenceId) setEditingPrefId(ev.preferenceId);
+            }}
+          />
 
           <SyllabusPaste onParsed={handleParsed} />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="preferences" className="outline-none">
-          <PreferencesPanel preferences={preferences} onChange={handlePreferencesChange} />
-        </TabsContent>
+      {tab === "preferences" && (
+        <PreferencesPanel preferences={preferences} onChange={setPreferences} />
+      )}
 
-        <TabsContent value="overlap" className="outline-none">
-          <OverlapView
-            events={allEvents}
-            slots={overlapSlots}
-            mode={overlapMode}
-            onModeChange={setOverlapMode}
-          />
-        </TabsContent>
+      {tab === "overlap" && (
+        <OverlapView
+          events={allEvents}
+          slots={overlapSlots}
+          mode={overlapMode}
+          onModeChange={setOverlapMode}
+        />
+      )}
 
-        <TabsContent value="walk" className="outline-none">
-          <WalkAlerts warnings={warnings} />
-        </TabsContent>
-      </Tabs>
+      {tab === "walk" && <WalkAlerts warnings={warnings} />}
 
       <ProtectThisDialog
         open={protectSlot != null}
@@ -191,6 +168,18 @@ export default function Home() {
         }}
         onConfirm={confirmProtect}
       />
-    </main>
+
+      <EventPrefSheet
+        preference={editingPref}
+        open={editingPrefId != null}
+        onOpenChange={(open) => {
+          if (!open) setEditingPrefId(null);
+        }}
+        onUpdate={(updated) =>
+          setPreferences((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+        }
+        onDelete={(id) => setPreferences((prev) => prev.filter((p) => p.id !== id))}
+      />
+    </AppShell>
   );
 }

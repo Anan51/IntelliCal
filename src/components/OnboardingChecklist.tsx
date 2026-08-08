@@ -1,85 +1,74 @@
-import { Check, Circle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type Props = {
   hasSyllabusExtras: boolean;
-  hasPreferences: boolean;
-  onGoPreferences?: () => void;
+  prefCount: number;
+  walkCount: number;
+  onGoPreferences: () => void;
+  onGoSyllabus?: () => void;
 };
 
 export default function OnboardingChecklist({
   hasSyllabusExtras,
-  hasPreferences,
+  prefCount,
+  walkCount,
   onGoPreferences,
 }: Props) {
   const items = [
     {
-      id: "syllabus",
-      label: "Add a syllabus",
       done: hasSyllabusExtras,
-      hint: "Load the sample below and parse it in.",
+      label: "Syllabus on calendar",
+      actionLabel: !hasSyllabusExtras ? "Add below" : null,
     },
     {
-      id: "prefs",
-      label: "Set preferences",
-      done: hasPreferences,
-      hint: "Gym / quiet hours — empty ≠ available.",
-      action: onGoPreferences,
+      done: prefCount > 0,
+      label: `${prefCount} preference${prefCount === 1 ? "" : "s"} set`,
+      actionLabel: "Edit prefs",
+      onAction: onGoPreferences,
     },
     {
-      id: "gcal",
-      label: "Connect calendar",
       done: false,
-      hint: "Coming soon (Phase 2)",
-      disabled: true,
+      label: "Connect Google Calendar",
+      soon: true,
     },
   ];
 
   return (
-    <Card className="border-border bg-[var(--surface)]">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Build your week</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className={cn(
-                "flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5",
-                item.disabled && "opacity-60"
-              )}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px]">
+      {items.map((item) => (
+        <div key={item.label} className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              item.done ? "bg-[var(--green)]" : item.soon ? "bg-white/20" : "bg-primary/60"
+            )}
+            aria-hidden
+          />
+          <span className={cn(item.done && "text-foreground/80")}>{item.label}</span>
+          {item.soon && (
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/50">
+              soon
+            </span>
+          )}
+          {item.actionLabel && item.onAction && (
+            <button
+              type="button"
+              onClick={item.onAction}
+              className="text-primary hover:underline"
             >
-              {item.done ? (
-                <Check className="mt-0.5 size-4 shrink-0 text-[var(--green)]" aria-hidden />
-              ) : (
-                <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {item.disabled && (
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Soon
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">{item.hint}</p>
-                {item.action && !item.done && (
-                  <button
-                    type="button"
-                    onClick={item.action}
-                    className="mt-1 text-xs font-medium text-primary hover:underline"
-                  >
-                    Open Preferences
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+              {item.actionLabel}
+            </button>
+          )}
+          {item.actionLabel && !item.onAction && !item.done && (
+            <span className="text-muted-foreground/70">{item.actionLabel}</span>
+          )}
+        </div>
+      ))}
+      {walkCount > 0 && (
+        <span className="text-[var(--warn)]">
+          {walkCount} tight walk{walkCount === 1 ? "" : "s"}
+        </span>
+      )}
+    </div>
   );
 }
